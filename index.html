@@ -1371,7 +1371,10 @@ const isDialogOpen = () => $('#dialog').open;
  *  - localStorage には予備として同じ内容を保存する
  * ===================================================================== */
 const FILE_TYPES = [{ description: '作業記録データ（JSON）', accept: { 'application/json': ['.json'] } }];
-const fsSupported = typeof window.showSaveFilePicker === 'function' && typeof window.showOpenFilePicker === 'function';
+// Android の Chrome にもファイル選択の機能はあるが、OneDrive などのファイルへは書き込めないため、
+// Android では「読み込み」と「共有して保存」で手動でやり取りする
+const isAndroid = /Android/i.test(navigator.userAgent || '');
+const fsSupported = !isAndroid && typeof window.showSaveFilePicker === 'function' && typeof window.showOpenFilePicker === 'function';
 if (!fsSupported) fileStore.status = 'unsupported';
 
 function idbOpen() {
@@ -1560,7 +1563,20 @@ async function openDataFile() {
   }
   const perm = await requestWritePermission(h);
   if (perm !== 'granted') {
-    await alertDialog('保存の許可が得られませんでした', `『${h.name}』への書き込みが許可されなかったため、まだ接続していません。\n\n${PERMISSION_HELP}`);
+    const v = await openDialog({
+      title: '保存の許可が得られませんでした',
+      message: `『${h.name}』への書き込みが許可されなかったため、このファイルへは自動で保存できません。\n\n${PERMISSION_HELP}\n\n内容を読み込むだけなら「読み込みだけする」を選べます（以降の記録はこのブラウザ内に保存されます）。`,
+      cancelValue: false,
+      buttons: [{ label: '閉じる', value: false }, { label: '読み込みだけする', value: true }],
+    });
+    if (v) {
+      try {
+        const f = await h.getFile();
+        await loadManualFile({ name: h.name, text: () => f.text() });
+      } catch (e) {
+        await alertDialog('読み込めません', `ファイルを読み込めませんでした（${e.name}）。`);
+      }
+    }
     return;
   }
   let text;

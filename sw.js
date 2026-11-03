@@ -1,6 +1,6 @@
 // オフライン用のサービスワーカー（Web上で開いたときだけ使われる）
 // ツールを更新したら CACHE の番号を上げる
-const CACHE = 'sagyokanri-v1';
+const CACHE = 'sagyokanri-v2';
 const FILES = [
   './',
   './index.html',

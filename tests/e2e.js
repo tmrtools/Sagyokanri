@@ -585,7 +585,7 @@ function check(name, cond, detail = '') {
   await p2.click('#dialog[open] #dialogButtons button >> text=許可する');
   await p2.waitForFunction(() => document.querySelector('#dialogTitle').textContent === '保存の許可が得られませんでした');
   check('拒否されたときは許可の方法を案内する', (await p2.textContent('#dialogMessage')).includes('サイトの設定'));
-  await p2.click('#dialog[open] #dialogButtons button >> text=OK');
+  await p2.click('#dialog[open] #dialogButtons button >> text=閉じる');
   // 時間切れのあと「許可する」で接続できる場合
   await p2.evaluate(() => { localStorage.removeItem('__fakeDeny'); localStorage.setItem('__fakeNoActivation', '1'); });
   await p2.click('#fileOpen');
@@ -704,6 +704,18 @@ function check(name, cond, detail = '') {
   } finally {
     server.kill();
   }
+  // ---------------------------------------------------------------
+  console.log('17. Android の Chrome（ファイル選択の機能がある場合）');
+  const ctx5 = await browser.newContext({
+    viewport: { width: 360, height: 800 }, locale: 'ja-JP',
+    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36',
+  });
+  const p5 = await ctx5.newPage();
+  await p5.goto(URL);
+  const hasPicker = await p5.evaluate(() => typeof window.showOpenFilePicker === 'function');
+  await goSetting(p5, 'file');
+  check('Android ではファイル選択の機能があっても手動モードにする', hasPicker && await p5.locator('#fileManual').isVisible() && await p5.locator('#fileAuto').isHidden());
+  await ctx5.close();
   check('index.html 以外のファイルを読み込んでいない', otherFiles.size === 0, [...otherFiles].join(', '));
   check('ページでJavaScriptエラーが発生していない', errors.length === 0, errors.join(' | '));
   console.log(`\n結果: ${passed} 件成功 / ${failed} 件失敗（スクリーンショット: ${SHOT_DIR}）`);
