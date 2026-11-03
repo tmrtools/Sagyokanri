@@ -447,6 +447,10 @@ main { padding: 12px; }
   margin-left: 4px;
 }
 .rec-row .row-warn { margin: 6px 0 0; }
+.memo-input { min-height: 104px; resize: vertical; line-height: 1.5; }
+.memo-count { font-size: 12px; color: var(--sub); text-align: right; margin-top: 2px; }
+.memo-count.is-over { color: var(--warn); }
+.rec-line-body .sub { white-space: pre-line; }
 .rec-row .row-meta { font-size: 13px; color: var(--sub); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
 
 .btn-copy { width: 100%; min-height: 60px; font-size: 18px; }
@@ -627,7 +631,8 @@ main { padding: 12px; }
         </div>
         <div class="field">
           <label for="recMemo">メモ</label>
-          <input type="text" id="recMemo" autocomplete="off" placeholder="任意">
+          <textarea id="recMemo" class="memo-input" rows="4" placeholder="任意（改行できます）" aria-describedby="recMemoCount"></textarea>
+          <div id="recMemoCount" class="memo-count num" aria-live="off"></div>
         </div>
         <p id="recFieldsNote" class="note" hidden></p>
       </div>
@@ -943,6 +948,12 @@ function parseDatetimeLocal(v) {
 function recordMinutes(r, now = Date.now()) {
   const end = r.end == null ? now : r.end;
   return Math.max(0, Math.floor(end / 60000) - Math.floor(r.start / 60000));
+}
+const MEMO_GUIDE = 300; // メモの目安の文字数（超えても保存できる）
+function updateMemoCount(area, out) {
+  const n = [...area.value].length;
+  out.textContent = n > MEMO_GUIDE ? `⚠ ${n}文字（目安の${MEMO_GUIDE}文字を超えています）` : `${n} / ${MEMO_GUIDE}文字`;
+  out.classList.toggle('is-over', n > MEMO_GUIDE);
 }
 function el(tag, className, text) {
   const n = document.createElement(tag);
@@ -1894,7 +1905,7 @@ function initRecordScreen() {
   });
   $('#recCustomerSlot').append(recCustomerCombo);
   $('#recProjectSlot').append(recProjectCombo);
-  $('#recMemo').addEventListener('input', (e) => setRecordField('memo', e.target.value));
+  $('#recMemo').addEventListener('input', (e) => { setRecordField('memo', e.target.value); updateMemoCount($('#recMemo'), $('#recMemoCount')); });
 
   $('#recResume').addEventListener('click', resumePrevious);
   $('#recBreak').addEventListener('click', startBreak);
@@ -1971,6 +1982,7 @@ function renderRecord() {
     recCustomerCombo.setValue(target ? target.customer : '');
     recProjectCombo.setValue(target ? target.project : '');
     $('#recMemo').value = target ? target.memo : '';
+    updateMemoCount($('#recMemo'), $('#recMemoCount'));
   }
   const onBreak = !!run && run.type === 'break';
   recCustomerCombo.input.disabled = onBreak;
@@ -2231,14 +2243,20 @@ function buildRecordRow(r, prefix, warnings) {
   grid.append(labeled('顧客', custCombo, 'col-cust'));
   grid.append(labeled('案件', projCombo, 'col-proj'));
 
-  const memo = el('input');
-  memo.type = 'text';
+  const memo = el('textarea', 'memo-input');
+  memo.rows = 4;
   memo.value = r.memo;
-  memo.autocomplete = 'off';
-  memo.placeholder = '任意';
+  memo.placeholder = '任意（改行できます）';
   memo.dataset.fk = `${prefix}-${r.id}-memo`;
+  const memoCount = el('div', 'memo-count num');
+  memoCount.id = `f${uid()}`;
+  memo.setAttribute('aria-describedby', memoCount.id);
+  memo.addEventListener('input', () => updateMemoCount(memo, memoCount));
   memo.addEventListener('change', () => { r.memo = memo.value; save(); scheduleRender(); });
-  grid.append(labeled('メモ', memo, 'col-memo'));
+  updateMemoCount(memo, memoCount);
+  const memoBox = labeled('メモ', memo, 'col-memo');
+  memoBox.append(memoCount);
+  grid.append(memoBox);
 
   const actions = el('div', 'col-actions');
   if (r.end == null) {

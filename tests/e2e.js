@@ -68,6 +68,18 @@ function check(name, cond, detail = '') {
   await page.fill('#recMemo', '納期確認 1');
   s = await getState();
   check('入力欄が実行中の記録へ自動保存される', s.records[1].memo === '納期確認 1');
+  await page.locator('#recMemo').press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('2行目 3');
+  s = await getState();
+  check('メモ欄でEnterを押すと改行になる', s.records[1].memo === '納期確認 1\n2行目 3' && s.records.length === 2, JSON.stringify(s.records[1].memo));
+  const long = 'あ'.repeat(300);
+  await page.fill('#recMemo', long);
+  s = await getState();
+  check('メモに300文字入る', s.records[1].memo === long && (await page.textContent('#recMemoCount')) === '300 / 300文字');
+  const box = await page.locator('#recMemo').boundingBox();
+  check('メモ欄が複数行の高さ', box.height >= 100, String(box.height));
+  await page.fill('#recMemo', '納期確認 1');
   check('文字入力中の数字キーでは切り替わらない', s.records.length === 2 && s.records[1].categoryId === 'cat2');
   await page.locator('#recMemo').blur();
   await page.keyboard.press('1');
