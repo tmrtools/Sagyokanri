@@ -622,7 +622,8 @@ function check(name, cond, detail = '') {
     delete window.showSaveFilePicker;
     delete window.showOpenFilePicker;
     if (localStorage.getItem('__noShare')) return;
-    navigator.canShare = (d) => !!(d && d.files && d.files.length);
+    // Chrome と同じく、.json は共有できない（.txt はできる）
+    navigator.canShare = (d) => !!(d && d.files && d.files.length && d.files.every((f) => /\.txt$/i.test(f.name) && f.type.startsWith('text/plain')));
     navigator.share = async (d) => { for (const f of d.files) await window.__shared(f.name, await f.text()); };
   });
   const p3 = await ctx3.newPage();
@@ -637,14 +638,14 @@ function check(name, cond, detail = '') {
   check('業務終了時に OneDrive への保存を案内', (await p3.textContent('#dialogTitle')) === 'OneDrive への保存');
   await p3.click('#dialog[open] #dialogButtons button >> text=共有して保存');
   await p3.waitForTimeout(200);
-  check('共有でデータファイルを渡す', sharedFiles.length === 1 && sharedFiles[0].name === '作業記録データ.json' && JSON.parse(sharedFiles[0].text).records.length === 1);
+  check('共有でデータファイルを渡す', sharedFiles.length === 1 && sharedFiles[0].name === '作業記録データ.txt' && JSON.parse(sharedFiles[0].text).records.length === 1);
   check('共有後は案内を隠し「保存済み」表示', await p3.locator('#fileBar').isHidden() && (await p3.textContent('#recSaved')) === '📱 端末に保存済み');
   // パソコンで更新されたファイルを読み込む
   const pc = JSON.parse(sharedFiles[0].text);
   pc.records.push({ id: 'pc1', start: Date.now() - 900000, end: Date.now() - 800000, type: 'work', categoryId: 'cat2', customer: 'A社', project: '', memo: 'PCで記録' });
   pc.savedAt = Date.now() + 1000;
   const tmp3 = fs.mkdtempSync(path.join(os.tmpdir(), 'sgk-and-'));
-  const pcPath = path.join(tmp3, '作業記録データ.json');
+  const pcPath = path.join(tmp3, '作業記録データ.json'); // 以前の .json も読み込める
   fs.writeFileSync(pcPath, JSON.stringify(pc));
   await goSetting(p3, 'file');
   check('設定画面に読み込み・共有のボタン', await p3.locator('#fileManual').isVisible() && await p3.locator('#fileAuto').isHidden());
@@ -663,6 +664,7 @@ function check(name, cond, detail = '') {
   await goSetting(p3, 'file');
   await p3.setInputFiles('#manualLoadInput', pcPath);
   await p3.waitForSelector('#dialog[open]');
+  check('読み込んだ .json の名前でも .txt として共有する', await p3.evaluate(() => manualFileName()) === '作業記録データ.txt');
   check('端末の方が新しいときは警告する', (await p3.textContent('#dialogMessage')).includes('この端末のデータ'));
   await p3.click('#dialog[open] #dialogButtons button >> text=キャンセル');
   check('キャンセルすると端末のデータを残す', (await st3()).records.length === 3);
@@ -671,7 +673,8 @@ function check(name, cond, detail = '') {
   await p3.reload();
   await goSetting(p3, 'file');
   const [dl3] = await Promise.all([p3.waitForEvent('download'), p3.click('#manualShare')]);
-  check('共有できないブラウザではダウンロードする', dl3.suggestedFilename() === '作業記録データ.json');
+  check('共有できないブラウザではダウンロードする', dl3.suggestedFilename() === '作業記録データ.txt');
+  check('ダウンロードになった理由と次の手順を表示', (await p3.textContent('#manualStatus')).includes('アップロード'));
   await p3.screenshot({ path: path.join(SHOT_DIR, 'android-file.png'), fullPage: true });
   await ctx3.close();
 
