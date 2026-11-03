@@ -152,7 +152,8 @@ input:disabled { opacity: .5; }
 /* ---------- タブ ---------- */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 1fr 1fr 64px;
+  padding-inline: max(6px, calc((100% - 720px) / 2));
   gap: 4px;
   padding: 6px;
   border-bottom: 1px solid var(--border);
@@ -183,6 +184,62 @@ input:disabled { opacity: .5; }
 main { padding: 12px; }
 .screen-record { max-width: 400px; margin: 0 auto; }
 .screen-wide { max-width: 1200px; margin: 0 auto; }
+.screen-report { max-width: 720px; margin: 0 auto; }
+.screen-narrow { max-width: 560px; margin: 0 auto; }
+.tab { font-size: 15px; }
+.tab-gear { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; border-color: var(--border); }
+.gear-icon { font-size: 18px; line-height: 1; color: var(--text); }
+.screen-title:focus { outline: none; }
+
+/* 記録画面の保存状態 */
+.rec-saved { font-size: 12px; color: var(--sub); text-align: right; }
+.rec-saved.is-warn { color: var(--warn); }
+
+/* 設定メニュー */
+.menu-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.menu-list li + li { border-top: 1px solid var(--border); }
+.menu-item {
+  display: grid; grid-template-columns: 32px minmax(0, 1fr) 16px; gap: 10px; align-items: center;
+  width: 100%; min-height: 68px; padding: 12px; text-align: left;
+  background: var(--surface-2); border: 0; cursor: pointer;
+}
+.menu-item:hover { background: var(--surface); }
+.menu-icon { font-size: 20px; text-align: center; }
+.menu-text { display: flex; flex-direction: column; min-width: 0; }
+.menu-name { font-weight: 700; }
+.menu-desc { font-size: 12px; color: var(--sub); word-break: break-all; }
+.menu-arrow { color: var(--sub); font-size: 18px; }
+.menu-badge { font-size: 11px; font-weight: 400; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 0 5px; margin-left: 8px; }
+.back-btn {
+  min-height: var(--tap); padding: 4px 8px 4px 0; background: none; border: 0;
+  color: var(--sub); font-size: 15px; cursor: pointer;
+}
+.back-btn:hover { color: var(--text); }
+.file-name { font-size: 16px; margin: 0; word-break: break-all; }
+
+/* 日報画面 */
+.section-head { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 6px; }
+.section-head .section-title { margin: 0; }
+.section-gap { margin-top: 18px; }
+.btn-link { margin: 6px auto 0; display: flex; }
+.check-box { margin-top: 12px; border: 1px solid var(--warn); border-radius: 8px; padding: 8px 10px; }
+.check-title { font-size: 14px; color: var(--warn); margin: 0 0 4px; }
+.check-list { list-style: none; margin: 0; padding: 0; }
+.check-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+.check-item .btn { flex: none; white-space: nowrap; }
+.rec-lines { list-style: none; margin: 0; padding: 0; }
+.rec-line { border-bottom: 1px solid var(--border); padding: 4px 0; }
+.rec-line.is-break .rec-line-body { color: var(--sub); }
+.rec-line.is-open { border: 1px solid var(--accent); border-radius: 8px; padding: 4px 8px 8px; margin: 6px 0; background: var(--surface-2); }
+.rec-line-head { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: var(--tap); }
+.rec-line-time { color: var(--sub); font-size: 14px; }
+.rec-line-body { font-size: 14px; word-break: break-all; }
+.rec-line-body .sub { color: var(--sub); }
+.rec-line-head .btn { white-space: nowrap; }
+.warn-inline { color: var(--warn); font-size: 13px; margin-left: 6px; white-space: nowrap; }
+.rec-line .rec-row { border: 0; padding: 4px 0 0; background: none; }
+.rec-line .rec-row-grid { grid-template-columns: 1fr 1fr; }
+.rec-line .rec-row-grid .col-cat, .rec-line .rec-row-grid .col-memo, .rec-line .rec-row-grid .col-actions { grid-column: 1 / -1; }
 
 /* ---------- 記録画面 ---------- */
 .rec-header {
@@ -343,7 +400,8 @@ main { padding: 12px; }
   align-items: center;
   margin-bottom: 14px;
 }
-.date-nav input[type="date"] { width: auto; }
+.date-nav { display: grid; grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap); margin-bottom: 0; }
+.date-nav input[type="date"] { width: 100%; text-align: center; font-weight: 700; }
 
 .report-layout {
   display: grid;
@@ -535,10 +593,9 @@ main { padding: 12px; }
   <nav class="tabs" aria-label="画面の切り替え">
     <button type="button" class="tab" data-screen="record">記録</button>
     <button type="button" class="tab" data-screen="report">日報</button>
-    <button type="button" class="tab" data-screen="master">マスタ管理</button>
-    <button type="button" class="tab" data-screen="settings">作業ボタン設定</button>
+    <button type="button" class="tab tab-gear" data-screen="menu"><span class="gear-icon" aria-hidden="true">⚙</span>設定</button>
   </nav>
-  <div id="fileBar" class="file-bar" role="status" aria-live="polite"></div>
+  <div id="fileBar" class="file-bar" role="status" aria-live="polite" hidden></div>
 
   <main>
     <!-- ========== 記録画面 ========== -->
@@ -550,7 +607,7 @@ main { padding: 12px; }
           <div id="recDate" class="rec-date"></div>
           <div class="rec-total">実働 <span id="recTotal" class="num"></span></div>
         </div>
-        <button type="button" id="recToReport" class="btn btn-small">日報を見る →</button>
+        <div id="recSaved" class="rec-saved"></div>
       </div>
 
       <div class="rec-current" aria-live="polite">
@@ -582,8 +639,7 @@ main { padding: 12px; }
 
       <button type="button" id="recResume" class="btn btn-block"></button>
 
-      <section class="rec-recent" aria-labelledby="recentHeading">
-        <h2 id="recentHeading" class="section-title">直近の記録</h2>
+      <section class="rec-recent" aria-label="直近の記録">
         <ol id="recRecent" class="recent-list"></ol>
       </section>
 
@@ -594,90 +650,85 @@ main { padding: 12px; }
     </section>
 
     <!-- ========== 日報画面 ========== -->
-    <section id="screen-report" class="screen screen-wide" aria-labelledby="reportHeading" hidden>
-      <h1 id="reportHeading" class="screen-title">日報</h1>
+    <section id="screen-report" class="screen screen-report" aria-labelledby="reportHeading" hidden>
+      <h1 id="reportHeading" class="visually-hidden">日報</h1>
       <div class="date-nav">
-        <button type="button" id="repPrev" class="btn">← 前日</button>
+        <button type="button" id="repPrev" class="btn btn-icon" aria-label="前日">‹</button>
         <label class="visually-hidden" for="repDate">表示する日付</label>
         <input type="date" id="repDate">
-        <button type="button" id="repNext" class="btn">翌日 →</button>
-        <button type="button" id="repToday" class="btn">今日</button>
+        <button type="button" id="repNext" class="btn btn-icon" aria-label="翌日">›</button>
       </div>
+      <button type="button" id="repToday" class="btn btn-small btn-link" hidden>今日に戻る</button>
 
-      <div class="report-layout">
-        <div class="report-main">
-          <section class="card" aria-labelledby="listHeading">
-            <div class="card-head">
-              <h2 id="listHeading" class="section-title">記録一覧</h2>
-              <button type="button" id="repAdd" class="btn btn-small">＋ 記録を追加</button>
-            </div>
-            <p id="repWarnSummary" class="warn" hidden></p>
-            <div id="repList" class="rec-rows"></div>
-          </section>
+      <button type="button" id="repCopy" class="btn btn-primary btn-copy">日報テキストをコピー</button>
+      <p id="repCopyStatus" class="copy-status" role="status" aria-live="polite"></p>
+      <label class="visually-hidden" for="repText">日報テキスト</label>
+      <textarea id="repText" class="report-text num" readonly rows="8"></textarea>
 
-          <section class="card" aria-labelledby="checkHeading">
-            <h2 id="checkHeading" class="section-title">登録前の確認</h2>
-            <p class="note">顧客・案件・メモがすべて未入力の記録と、計測中の記録を表示します。</p>
-            <div id="repCheck" class="rec-rows"></div>
-          </section>
+      <section id="repCheckBox" class="check-box" aria-labelledby="checkHeading" hidden>
+        <h2 id="checkHeading" class="check-title"></h2>
+        <ul id="repCheck" class="check-list"></ul>
+      </section>
+
+      <section aria-labelledby="listHeading">
+        <div class="section-head">
+          <h2 id="listHeading" class="section-title">記録</h2>
+          <button type="button" id="repAdd" class="btn btn-small">＋ 追加</button>
         </div>
+        <p id="repWarnSummary" class="warn" hidden></p>
+        <ul id="repList" class="rec-lines"></ul>
+      </section>
 
-        <div class="report-side">
-          <section class="card" aria-labelledby="textHeading">
-            <h2 id="textHeading" class="section-title">日報テキスト</h2>
-            <button type="button" id="repCopy" class="btn btn-primary btn-copy">日報テキストをコピー</button>
-            <p id="repCopyStatus" class="copy-status" role="status" aria-live="polite"></p>
-            <label class="visually-hidden" for="repText">日報テキスト</label>
-            <textarea id="repText" class="report-text num" readonly rows="10"></textarea>
-          </section>
+      <section aria-labelledby="barsHeading">
+        <h2 id="barsHeading" class="section-title section-gap">カテゴリ別</h2>
+        <div id="repBars" class="bars"></div>
+      </section>
+    </section>
 
-          <section class="card" aria-labelledby="barsHeading">
-            <h2 id="barsHeading" class="section-title">カテゴリ別の合計</h2>
-            <div id="repBars" class="bars"></div>
-          </section>
+    <!-- ========== 設定メニュー ========== -->
+    <section id="screen-menu" class="screen screen-narrow" aria-labelledby="menuHeading" hidden>
+      <h1 id="menuHeading" class="screen-title">設定</h1>
+      <ul class="menu-list">
+        <li><button type="button" class="menu-item" data-go="buttons"><span class="menu-icon" aria-hidden="true">▦</span><span class="menu-text"><span class="menu-name">作業ボタン</span><span class="menu-desc">作業名の変更・追加・並べ替え</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
+        <li><button type="button" class="menu-item" data-go="master"><span class="menu-icon" aria-hidden="true">👥</span><span class="menu-text"><span class="menu-name">顧客・案件<span id="menuManualBadge" class="menu-badge" hidden></span></span><span class="menu-desc">マスタの登録・編集、手入力された名前の整理</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
+        <li><button type="button" class="menu-item" data-go="file"><span class="menu-icon" aria-hidden="true">💾</span><span class="menu-text"><span class="menu-name">データファイル</span><span id="menuFileDesc" class="menu-desc"></span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
+        <li><button type="button" class="menu-item" data-go="export"><span class="menu-icon" aria-hidden="true">⇩</span><span class="menu-text"><span class="menu-name">書き出し・バックアップ</span><span class="menu-desc">CSV書き出し、JSONバックアップと復元</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
+      </ul>
+    </section>
 
-          <section class="card" aria-labelledby="dataHeading">
-            <h2 id="dataHeading" class="section-title">データの書き出しと復元</h2>
-            <div class="stack">
-              <button type="button" id="csvDay" class="btn">表示中の日付をCSVで書き出す</button>
-              <fieldset class="range">
-                <legend>期間を指定してCSVで書き出す</legend>
-                <div class="range-row">
-                  <label>開始日 <input type="date" id="csvFrom"></label>
-                  <label>終了日 <input type="date" id="csvTo"></label>
-                </div>
-                <button type="button" id="csvRange" class="btn">期間をCSVで書き出す</button>
-              </fieldset>
-              <fieldset class="range">
-                <legend>データファイル（自動保存先）</legend>
-                <p id="fileInfo" class="note"></p>
-                <div class="stack">
-                  <button type="button" id="fileCreate" class="btn">新しいデータファイルを作成</button>
-                  <button type="button" id="fileOpen" class="btn">既存のデータファイルを開く</button>
-                  <button type="button" id="fileDisconnect" class="btn">接続を解除</button>
-                </div>
-              </fieldset>
-              <button type="button" id="jsonBackup" class="btn">全データをJSONでバックアップ</button>
-              <label class="btn file-btn">JSONバックアップから復元
-                <input type="file" id="jsonRestore" accept=".json,application/json" class="visually-hidden">
-              </label>
-              <p id="dataStatus" class="note" role="status" aria-live="polite"></p>
-            </div>
-          </section>
-        </div>
+    <!-- ========== 設定 > 作業ボタン ========== -->
+    <section id="screen-buttons" class="screen screen-wide" aria-labelledby="buttonsHeading" hidden>
+      <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
+      <h1 id="buttonsHeading" class="screen-title">作業ボタン</h1>
+      <div class="settings-cols">
+        <section class="card" aria-labelledby="catHeading">
+          <div class="card-head">
+            <h2 id="catHeading" class="section-title">作業の一覧</h2>
+            <button type="button" id="catSortUsage" class="btn btn-small">よく使う順に並べ替え</button>
+          </div>
+          <p class="note">使用回数は過去30日に記録した回数です。8個までは記録画面にボタンで表示します。</p>
+          <ol id="catList" class="cat-list"></ol>
+          <form id="catAddForm" class="add-form">
+            <label class="visually-hidden" for="catAddName">追加する作業名</label>
+            <input type="text" id="catAddName" placeholder="作業名" autocomplete="off">
+            <button type="submit" class="btn">追加</button>
+          </form>
+        </section>
+
+        <section class="card" aria-labelledby="previewHeading">
+          <h2 id="previewHeading" class="section-title">記録画面での表示</h2>
+          <div class="preview-frame">
+            <div id="previewGrid" class="work-grid" aria-label="作業ボタンのプレビュー"></div>
+            <div id="previewOthers" class="preview-others"></div>
+          </div>
+        </section>
       </div>
     </section>
 
-    <!-- ========== マスタ管理画面 ========== -->
+    <!-- ========== 設定 > 顧客・案件 ========== -->
     <section id="screen-master" class="screen screen-wide" aria-labelledby="masterHeading" hidden>
-      <h1 id="masterHeading" class="screen-title">マスタ管理</h1>
-      <div class="master-tools">
-        <label class="btn file-btn">CSVを取り込む
-          <input type="file" id="masterImport" accept=".csv,text/csv" class="visually-hidden">
-        </label>
-        <button type="button" id="masterExport" class="btn">CSVを書き出す</button>
-        <span class="note">形式：顧客名,案件名（案件名は空欄可）</span>
-      </div>
+      <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
+      <h1 id="masterHeading" class="screen-title">顧客・案件</h1>
       <p id="masterStatus" class="note" role="status" aria-live="polite"></p>
 
       <div class="master-cols">
@@ -710,34 +761,65 @@ main { padding: 12px; }
           <ul id="manualProjList" class="master-list"></ul>
         </section>
       </div>
+
+      <section class="card" aria-labelledby="masterCsvHeading">
+        <h2 id="masterCsvHeading" class="section-title">CSVで取り込み・書き出し</h2>
+        <p class="note">形式：顧客名,案件名（案件名は空欄可）。UTF-8 と Shift_JIS に対応しています。</p>
+        <div class="master-tools">
+          <label class="btn file-btn">CSVを取り込む
+            <input type="file" id="masterImport" accept=".csv,text/csv" class="visually-hidden">
+          </label>
+          <button type="button" id="masterExport" class="btn">CSVを書き出す</button>
+        </div>
+      </section>
     </section>
 
-    <!-- ========== 作業ボタン設定画面 ========== -->
-    <section id="screen-settings" class="screen screen-wide" aria-labelledby="settingsHeading" hidden>
-      <h1 id="settingsHeading" class="screen-title">作業ボタン設定</h1>
-      <div class="settings-cols">
-        <section class="card" aria-labelledby="catHeading">
-          <div class="card-head">
-            <h2 id="catHeading" class="section-title">作業の一覧</h2>
-            <button type="button" id="catSortUsage" class="btn btn-small">よく使う順に並べ替え</button>
-          </div>
-          <p class="note">使用回数は過去30日に記録した回数です。8個までは記録画面にボタンで表示します。</p>
-          <ol id="catList" class="cat-list"></ol>
-          <form id="catAddForm" class="add-form">
-            <label class="visually-hidden" for="catAddName">追加する作業名</label>
-            <input type="text" id="catAddName" placeholder="作業名" autocomplete="off">
-            <button type="submit" class="btn">追加</button>
-          </form>
-        </section>
+    <!-- ========== 設定 > データファイル ========== -->
+    <section id="screen-file" class="screen screen-narrow" aria-labelledby="fileHeading" hidden>
+      <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
+      <h1 id="fileHeading" class="screen-title">データファイル</h1>
+      <section class="card" aria-labelledby="fileNowHeading">
+        <h2 id="fileNowHeading" class="section-title">保存先</h2>
+        <p id="fileName" class="file-name"></p>
+        <p id="fileInfo" class="note"></p>
+        <div class="stack">
+          <button type="button" id="fileOpen" class="btn">既存のデータファイルを開く</button>
+          <button type="button" id="fileCreate" class="btn">新しいデータファイルを作成</button>
+          <button type="button" id="fileDisconnect" class="btn">接続を解除</button>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="fileHowHeading">
+        <h2 id="fileHowHeading" class="section-title">しくみ</h2>
+        <p class="note">記録するたびに、選んだデータファイルへ自動で保存します。ブラウザ内にも予備を保存しています。次回起動時は同じファイルに自動で再接続します。</p>
+      </section>
+    </section>
 
-        <section class="card" aria-labelledby="previewHeading">
-          <h2 id="previewHeading" class="section-title">記録画面での表示</h2>
-          <div class="preview-frame">
-            <div id="previewGrid" class="work-grid" aria-label="作業ボタンのプレビュー"></div>
-            <div id="previewOthers" class="preview-others"></div>
+    <!-- ========== 設定 > 書き出し・バックアップ ========== -->
+    <section id="screen-export" class="screen screen-narrow" aria-labelledby="exportHeading" hidden>
+      <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
+      <h1 id="exportHeading" class="screen-title">書き出し・バックアップ</h1>
+      <p id="dataStatus" class="note" role="status" aria-live="polite"></p>
+      <section class="card" aria-labelledby="csvHeading">
+        <h2 id="csvHeading" class="section-title">記録をCSVで書き出す</h2>
+        <p class="note">Excelで開けるBOM付きUTF-8です。列：日付,開始,終了,分,カテゴリ,顧客,案件,メモ</p>
+        <div class="stack">
+          <button type="button" id="csvDay" class="btn"></button>
+          <div class="range-row">
+            <label>開始日 <input type="date" id="csvFrom"></label>
+            <label>終了日 <input type="date" id="csvTo"></label>
           </div>
-        </section>
-      </div>
+          <button type="button" id="csvRange" class="btn">期間をCSVで書き出す</button>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="backupHeading">
+        <h2 id="backupHeading" class="section-title">JSONバックアップ</h2>
+        <div class="stack">
+          <button type="button" id="jsonBackup" class="btn">全データをJSONでバックアップ</button>
+          <label class="btn file-btn">JSONバックアップから復元
+            <input type="file" id="jsonRestore" accept=".json,application/json" class="visually-hidden">
+          </label>
+        </div>
+      </section>
     </section>
   </main>
 
@@ -1480,43 +1562,60 @@ function renderFileBar() {
   const text = el('span', 'file-bar-text');
   const acts = el('span', 'file-bar-actions');
   const add = (label, fn, fk) => { const b = button(label, fn, 'btn btn-small'); b.dataset.fk = fk; acts.append(b); };
+  let saved = '';
+  let desc = '';
   switch (fileStore.status) {
     case 'unsupported':
       text.textContent = '⚠ このブラウザはデータファイルへの保存に対応していません。Chromeで開いてください（ブラウザ内にのみ保存中）。';
+      saved = '⚠ ブラウザ内のみ';
+      desc = '未対応のブラウザです（ブラウザ内にのみ保存中）';
       break;
     case 'none':
       text.textContent = '⚠ データファイル未設定（ブラウザ内にのみ保存中）';
       add('新規作成', createDataFile, 'bar-create');
       add('開く', openDataFile, 'bar-open');
+      saved = '⚠ ブラウザ内のみ';
+      desc = '未設定（ブラウザ内にのみ保存中）';
       break;
     case 'needPermission':
       text.textContent = `⚠ データファイル『${name}』への再接続が必要です。${fileStore.message}`;
       add('再接続', reconnectDataFile, 'bar-reconnect');
+      saved = '⚠ 再接続が必要';
+      desc = `${name}（再接続が必要です）`;
       break;
     case 'connected':
-      text.textContent = `💾 ${name} に自動保存中${fileStore.lastWrite ? `（${fmtSavedAt(fileStore.lastWrite)} 保存）` : ''}`;
+      saved = '💾 自動保存済み';
+      desc = `${name} に自動保存中`;
       break;
     case 'error':
       text.textContent = `⚠ ${fileStore.message}`;
       if (fileStore.handle) add('再接続', reconnectDataFile, 'bar-reconnect');
       add('ファイルを選び直す', openDataFile, 'bar-open');
+      saved = '⚠ 保存できていません';
+      desc = '保存できていません';
       break;
     default:
       break;
   }
+  // 問題があるときだけ上部に警告を出す
+  bar.hidden = fileStore.status === 'connected';
   bar.append(text);
   if (acts.childElementCount) bar.append(acts);
 
-  // 日報画面の「データファイル」欄
-  const info = $('#fileInfo');
-  if (info) {
-    info.textContent = fileStore.handle
-      ? `接続中のファイル：${name}（${fileStore.status === 'connected' ? '自動保存中' : '保存できていません'}）`
-      : '接続中のファイルはありません。';
-    $('#fileCreate').disabled = !fsSupported;
-    $('#fileOpen').disabled = !fsSupported;
-    $('#fileDisconnect').disabled = !fileStore.handle;
-  }
+  const rs = $('#recSaved');
+  rs.textContent = saved;
+  rs.title = fileStore.status === 'connected' ? `${name}（${fmtSavedAt(fileStore.lastWrite)} 保存）` : '';
+  rs.classList.toggle('is-warn', fileStore.status !== 'connected');
+  $('#menuFileDesc').textContent = desc;
+
+  // 設定 > データファイル
+  $('#fileName').textContent = fileStore.handle ? name : '接続中のファイルはありません';
+  $('#fileInfo').textContent = fileStore.status === 'connected'
+    ? `自動保存中${fileStore.lastWrite ? `　最終保存 ${fmtSavedAt(fileStore.lastWrite)}` : ''}`
+    : desc;
+  $('#fileCreate').disabled = !fsSupported;
+  $('#fileOpen').disabled = !fsSupported;
+  $('#fileDisconnect').disabled = !fileStore.handle;
 }
 
 /* =====================================================================
@@ -1694,16 +1793,20 @@ function createCombo({ kind, id, value = '', fk, label, getCustomer, onInput, on
 /* =====================================================================
  * 画面切り替え・再描画
  * ===================================================================== */
-const SCREENS = ['record', 'report', 'master', 'settings'];
+const SCREENS = ['record', 'report', 'menu', 'buttons', 'master', 'file', 'export'];
+const SETTING_SCREENS = ['menu', 'buttons', 'master', 'file', 'export'];
+const SCREEN_ALIASES = { settings: 'buttons' }; // 旧URLの互換
 let currentScreen = 'record';
 let reportDate = todayKey();
 
 function showScreen(name) {
+  name = SCREEN_ALIASES[name] || name;
   if (!SCREENS.includes(name)) name = 'record';
   currentScreen = name;
   for (const s of SCREENS) $(`#screen-${s}`).hidden = s !== name;
+  const tabOf = SETTING_SCREENS.includes(name) ? 'menu' : name;
   document.querySelectorAll('.tab').forEach((t) => {
-    if (t.dataset.screen === name) t.setAttribute('aria-current', 'page');
+    if (t.dataset.screen === tabOf) t.setAttribute('aria-current', 'page');
     else t.removeAttribute('aria-current');
   });
   if (location.hash !== `#${name}`) history.replaceState(null, '', `#${name}`);
@@ -1733,7 +1836,10 @@ function renderAll() {
     renderRecord();
     if (currentScreen === 'report') renderReport();
     if (currentScreen === 'master') renderMaster();
-    if (currentScreen === 'settings') renderSettings();
+    if (currentScreen === 'buttons') renderSettings();
+    if (currentScreen === 'menu') renderMenu();
+    if (currentScreen === 'export') renderExport();
+    renderFileBar();
   });
 }
 let renderTimer = null;
@@ -1790,7 +1896,6 @@ function initRecordScreen() {
   $('#recProjectSlot').append(recProjectCombo);
   $('#recMemo').addEventListener('input', (e) => setRecordField('memo', e.target.value));
 
-  $('#recToReport').addEventListener('click', () => { reportDate = todayKey(); showScreen('report'); });
   $('#recResume').addEventListener('click', resumePrevious);
   $('#recBreak').addEventListener('click', startBreak);
   $('#recEnd').addEventListener('click', endWork);
@@ -2072,10 +2177,6 @@ function applyTime(r, field, v) {
 function buildRecordRow(r, prefix, warnings) {
   const warn = warnings.get(r.id) || [];
   const row = el('div', `rec-row${warn.length ? ' has-warn' : ''}${r.type === 'break' ? ' is-break' : ''}`);
-  const meta = el('div', 'row-meta');
-  meta.textContent = `${fmtHM(r.start)}-${r.end == null ? '計測中' : fmtHM(r.end)}（${recordMinutes(r)}分）`;
-  if (r.end == null) meta.append(el('span', 'badge', '● 計測中'));
-  row.append(meta);
   const grid = el('div', 'rec-row-grid');
 
   const timeInput = (field) => {
@@ -2149,6 +2250,7 @@ function buildRecordRow(r, prefix, warnings) {
     const ok = await confirmDialog('記録の削除', `${fmtHM(r.start)}-${r.end == null ? '計測中' : fmtHM(r.end)}「${categoryLabel(r)}」を削除しますか？`, '削除する', true);
     if (!ok) return;
     state.records = state.records.filter((x) => x !== r);
+    if (editingId === r.id) editingId = null;
     save();
     renderAll();
   }, 'btn btn-small btn-danger');
@@ -2156,33 +2258,82 @@ function buildRecordRow(r, prefix, warnings) {
   actions.append(del);
   grid.append(actions);
   row.append(grid);
-  for (const m of warn) row.append(el('p', 'warn row-warn', `⚠ ${m}`));
   return row;
+}
+
+let editingId = null; // 日報画面で入力欄を開いている記録
+const isUnfilled = (r) => r.type === 'work' && !norm(r.customer) && !norm(r.project) && !norm(r.memo);
+
+/** 記録の1行表示（「編集」で入力欄を開く） */
+function buildRecordLine(r, warnings) {
+  const warn = warnings.get(r.id) || [];
+  const open = editingId === r.id;
+  const li = el('li', `rec-line${warn.length ? ' has-warn' : ''}${r.type === 'break' ? ' is-break' : ''}${open ? ' is-open' : ''}`);
+  li.id = `line-${r.id}`;
+  const head = el('div', 'rec-line-head');
+  head.append(el('span', 'rec-line-time num', `${fmtHM(r.start)}-${r.end == null ? '計測中' : fmtHM(r.end)}`));
+  const body = el('span', 'rec-line-body');
+  body.append(el(r.type === 'break' ? 'span' : 'b', null, categoryLabel(r)));
+  const who = [r.customer, r.project].filter(Boolean).join('／');
+  const detail = [who, r.memo].filter(Boolean).join(' ');
+  if (detail) body.append(document.createTextNode(' '), el('span', 'sub', detail));
+  if (r.end == null) body.append(el('span', 'badge', '● 計測中'));
+  if (warn.length) body.append(el('span', 'warn-inline', '⚠ 時刻を確認'));
+  else if (isUnfilled(r)) body.append(el('span', 'warn-inline', '⚠ 未入力'));
+  const toggle = button(open ? '閉じる' : '編集', () => { editingId = open ? null : r.id; renderAll(); }, `btn btn-small${open ? ' btn-primary' : ''}`);
+  toggle.dataset.fk = `line-${r.id}-toggle`;
+  toggle.setAttribute('aria-expanded', String(open));
+  toggle.setAttribute('aria-label', `${fmtHM(r.start)}からの${categoryLabel(r)}を${open ? '閉じる' : '編集'}`);
+  head.append(body, toggle);
+  li.append(head);
+  if (open) li.append(buildRecordRow(r, 'list', warnings));
+  for (const m of warn) li.append(el('p', 'warn row-warn', `⚠ ${m}`));
+  return li;
+}
+
+/** 指定の記録の入力欄を開いてフォーカスする */
+function openRecordEditor(r, field) {
+  editingId = r.id;
+  renderAll();
+  const f = document.querySelector(`[data-fk="list-${r.id}-${field}"]`);
+  if (f) {
+    suppressComboOpen = true;
+    f.focus();
+    suppressComboOpen = false;
+    if (f.scrollIntoView) f.scrollIntoView({ block: 'center' });
+  }
 }
 
 function renderReport() {
   const key = reportDate;
   $('#repDate').value = key;
+  $('#repToday').hidden = key === todayKey();
   const list = recordsOfDate(key);
   const warnings = recordWarnings(list);
+  if (editingId && !list.some((r) => r.id === editingId)) editingId = null;
 
   const box = $('#repList');
   box.innerHTML = '';
-  if (!list.length) box.append(el('p', 'note', 'この日の記録はありません。'));
-  for (const r of list) box.append(buildRecordRow(r, 'list', warnings));
+  if (!list.length) box.append(el('li', 'note', 'この日の記録はありません。'));
+  for (const r of list) box.append(buildRecordLine(r, warnings));
   const ws = $('#repWarnSummary');
   ws.hidden = warnings.size === 0;
   ws.textContent = `⚠ 時刻に問題のある記録が${warnings.size}件あります。`;
 
-  // 登録前の確認
+  // 登録前の確認（必要なときだけ表示）
   const chk = $('#repCheck');
   chk.innerHTML = '';
-  const targets = list.filter((r) => r.end == null || (r.type === 'work' && !norm(r.customer) && !norm(r.project) && !norm(r.memo)));
-  if (!targets.length) chk.append(el('p', 'note', '✓ 確認が必要な記録はありません。'));
+  const targets = list.filter((r) => r.end == null || isUnfilled(r));
+  $('#repCheckBox').hidden = targets.length === 0;
+  $('#checkHeading').textContent = `⚠ 確認が必要な記録 ${targets.length}件`;
   for (const r of targets) {
-    const reason = r.end == null ? '計測中の記録' : '顧客・案件・メモが未入力';
-    chk.append(el('p', 'warn', `⚠ ${reason}`));
-    chk.append(buildRecordRow(r, 'chk', warnings));
+    const li = el('li', 'check-item');
+    const reason = r.end == null ? '計測中' : '顧客・案件・メモが未入力';
+    li.append(el('span', 'num', `${fmtHM(r.start)}-${r.end == null ? '計測中' : fmtHM(r.end)} ${categoryLabel(r)}（${reason}）`));
+    const b = button(r.end == null ? '終了時刻' : '入力', () => openRecordEditor(r, r.end == null ? 'end' : 'cust'), 'btn btn-small');
+    b.dataset.fk = `chk-${r.id}-open`;
+    li.append(b);
+    chk.append(li);
   }
 
   // 合計バー
@@ -2209,9 +2360,26 @@ function renderReport() {
     bars.append(t);
   }
 
-  $('#repText').value = formatDailyReport(data);
-  if (!$('#csvFrom').value) $('#csvFrom').value = key;
-  if (!$('#csvTo').value) $('#csvTo').value = key;
+  const ta = $('#repText');
+  ta.value = formatDailyReport(data);
+  // 全文が見えるよう高さを内容に合わせる
+  ta.style.height = 'auto';
+  ta.style.height = `${ta.scrollHeight + 2}px`;
+}
+
+function renderMenu() {
+  const { customers, projects } = manualNames();
+  const n = customers.length + projects.length;
+  const badge = $('#menuManualBadge');
+  badge.hidden = n === 0;
+  badge.textContent = `手入力 ${n}件`;
+}
+
+function renderExport() {
+  const [, m, d] = reportDate.split('-').map(Number);
+  $('#csvDay').textContent = `日報で表示中の日（${m}/${d}）をCSVで書き出す`;
+  if (!$('#csvFrom').value) $('#csvFrom').value = reportDate;
+  if (!$('#csvTo').value) $('#csvTo').value = reportDate;
 }
 
 function addRecordOnReport() {
@@ -2223,9 +2391,7 @@ function addRecordOnReport() {
   const r = { id: uid(), start, end: start + 30 * 60000, type: 'work', categoryId: cats[0].id, customer: '', project: '', memo: '' };
   state.records.push(r);
   save();
-  renderAll();
-  const f = document.querySelector(`[data-fk="list-${r.id}-start"]`);
-  if (f) f.focus();
+  openRecordEditor(r, 'start');
 }
 
 async function copyReport() {
@@ -2782,6 +2948,11 @@ function init() {
   initMasterScreen();
   initSettingsScreen();
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => showScreen(t.dataset.screen)));
+  document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
+    showScreen(b.dataset.go);
+    const h = $(`#screen-${b.dataset.go} h1`);
+    if (h) { h.tabIndex = -1; h.focus(); }
+  }));
   window.addEventListener('hashchange', () => showScreen(location.hash.slice(1)));
   document.addEventListener('keydown', onGlobalKeydown);
   // 別タブで更新されたら読み直す

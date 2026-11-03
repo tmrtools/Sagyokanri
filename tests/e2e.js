@@ -121,6 +121,10 @@ function check(name, cond, detail = '') {
   await page.screenshot({ path: path.join(SHOT_DIR, 'report-360.png'), fullPage: true });
 
   // 時刻重複の警告
+  check('記録は1行表示（編集前は入力欄なし）', (await page.locator('#repList input').count()) === 0 && (await page.locator('#repList .rec-line').count()) === 7);
+  check('確認が不要なら欄を出さない仕組み（今回は1件）', (await page.textContent('#checkHeading')).includes('1件'));
+  await page.click('[data-fk="line-r4-toggle"]');
+  check('「編集」で入力欄を開く', (await page.locator('#line-r4 input').count()) > 0 && (await page.locator('#repList input[type=time]').count()) === 2);
   await page.locator('[data-fk="list-r4-start"]').fill('13:50');
   await page.locator('[data-fk="list-r4-start"]').press('Enter');
   await page.waitForTimeout(50);
@@ -130,6 +134,8 @@ function check(name, cond, detail = '') {
   await page.waitForTimeout(50);
   check('終了が開始より前を警告', (await page.locator('#repList').innerText()).includes('終了時刻が開始時刻より前'));
 
+  await page.click('#repCheck button >> nth=0');
+  check('確認欄の「入力」で該当記録の顧客欄へ移動', await page.evaluate(() => document.activeElement.dataset.fk === 'list-r4-cust'));
   // コピー
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.click('#repCopy');
@@ -139,7 +145,7 @@ function check(name, cond, detail = '') {
   // ---------------------------------------------------------------
   console.log('5. 作業名の変更と合算');
   await setState(st);
-  await page.click('.tab[data-screen="settings"]');
+  await goSetting(page, 'buttons');
   await page.fill('[data-fk="cat-name-cat1"]', '電話・問合せ');
   await page.locator('[data-fk="cat-name-cat1"]').press('Tab');
   await page.waitForTimeout(50);
@@ -152,7 +158,7 @@ function check(name, cond, detail = '') {
   check('新旧の記録が合算される（25+12+30=67分→1.1h）', t5.includes('電話・問合せ 1.1h'), t5.split('\n').pop());
 
   // 削除した作業は削除時の名前で残る
-  await page.click('.tab[data-screen="settings"]');
+  await goSetting(page, 'buttons');
   await page.click('[data-fk="cat-del-cat5"]');
   await dlgClick('削除する');
   check('削除した作業は選択肢から外れる', !(await gridNamesOn(page, '#previewGrid')).includes('顧客訪問'));
@@ -170,7 +176,7 @@ function check(name, cond, detail = '') {
   s6.records = [mk('cat4', 1e6, 1), mk('cat4', 2e6, 2), mk('cat4', 3e6, 3), mk('cat6', 4e6, 4), mk('cat6', 5e6, 5), mk('cat2', 6e6, 6), mk('cat2', 7e6, 7)]
     .concat([1, 2, 3, 4, 5].map((i) => mk('cat1', 31 * 864e5 + i * 1e6, 10 + i)));
   await setState(s6);
-  await page.click('.tab[data-screen="settings"]');
+  await goSetting(page, 'buttons');
   const usage = await page.$$eval('#catList .cat-usage', (n) => n.map((x) => x.textContent));
   check('過去30日の使用回数を表示', usage.join(',') === '30日：0回,30日：2回,30日：0回,30日：3回,30日：0回,30日：2回', usage.join(','));
   await page.click('[data-fk="cat-up-cat3"]');
@@ -187,12 +193,12 @@ function check(name, cond, detail = '') {
 
   // ---------------------------------------------------------------
   console.log('7. 8個と9個のボタン表示');
-  await page.click('.tab[data-screen="settings"]');
+  await goSetting(page, 'buttons');
   for (const n of ['経理', '移動']) { await page.fill('#catAddName', n); await page.press('#catAddName', 'Enter'); }
   await page.click('.tab[data-screen="record"]');
   let names = await gridNames();
   check('8個のときはすべてボタン表示', names.length === 8 && !names.some((x) => x.includes('他の作業')), names.join(','));
-  await page.click('.tab[data-screen="settings"]');
+  await goSetting(page, 'buttons');
   await page.fill('#catAddName', '研修');
   await page.press('#catAddName', 'Enter');
   check('9個のとき区切りを表示', (await page.locator('#catList .cat-sep').count()) === 1 &&
@@ -214,7 +220,7 @@ function check(name, cond, detail = '') {
   check('他の作業リストから開始できる', categoryName(s6b, s6b.records.at(-1).categoryId) === '研修');
   check('他の作業ボタンに実行中を表示', (await page.locator('#otherBtn').innerText()).includes('実行中：研修'));
   await page.screenshot({ path: path.join(SHOT_DIR, 'record-360-9buttons.png'), fullPage: true });
-  await page.click('.tab[data-screen="settings"]');
+  await goSetting(page, 'buttons');
   const runDel = await page.locator('[data-fk="cat-del-' + s6b.records.at(-1).categoryId + '"]').isDisabled();
   check('実行中の作業は削除できない', runDel);
 
@@ -222,7 +228,7 @@ function check(name, cond, detail = '') {
   console.log('8. 顧客・案件のコンボボックス');
   await page.evaluate((k) => localStorage.removeItem(k), KEY);
   await page.reload();
-  await page.click('.tab[data-screen="master"]');
+  await goSetting(page, 'master');
   for (const n of ['A社', 'B社', 'Cコーポ']) { await page.fill('#custAddName', n); await page.press('#custAddName', 'Enter'); }
   await page.click('[data-fk^="cust-sel-"] >> text=A社');
   for (const n of ['保守サポート', '新規提案']) { await page.fill('#projAddName', n); await page.press('#projAddName', 'Enter'); }
@@ -297,7 +303,7 @@ function check(name, cond, detail = '') {
   s8b = await getState();
   check('フォーカスが外れたら手入力のまま確定', s8b.records.at(-1).customer === 'E社');
   // 非表示
-  await page.click('.tab[data-screen="master"]');
+  await goSetting(page, 'master');
   await page.click(`[data-fk="cust-hide-${s8b.customers.find((c) => c.name === 'Cコーポ').id}"]`);
   await page.click('.tab[data-screen="record"]');
   await page.fill('#recCustomer', '');
@@ -309,7 +315,10 @@ function check(name, cond, detail = '') {
 
   // ---------------------------------------------------------------
   console.log('9. 手入力名の統合とマスタ名の変更');
-  await page.click('.tab[data-screen="master"]');
+  await page.click('.tab[data-screen="menu"]');
+  check('設定メニューに手入力の件数を表示', /^手入力 \d+件$/.test(await page.textContent('#menuManualBadge')));
+  await page.screenshot({ path: path.join(SHOT_DIR, 'menu-360.png'), fullPage: true });
+  await goSetting(page, 'master');
   const manual = await page.locator('#manualCustList').innerText();
   check('手入力された顧客名を使用回数付きで表示', manual.includes('えーしゃ') && manual.includes('2件'), manual);
   await page.click('[data-fk="mc-merge-えーしゃ"]');
@@ -339,6 +348,8 @@ function check(name, cond, detail = '') {
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.screenshot({ path: path.join(SHOT_DIR, 'master-1200.png'), fullPage: true });
   await page.setViewportSize({ width: 360, height: 900 });
+  await page.click('#screen-master .back-btn');
+  check('「‹ 設定」で設定メニューに戻る', await page.locator('#screen-menu').isVisible());
 
   // ---------------------------------------------------------------
   console.log('10. マスタCSV（UTF-8 / Shift_JIS）');
@@ -346,6 +357,7 @@ function check(name, cond, detail = '') {
   const sjisPath = path.join(tmp, 'master_sjis.csv');
   const { execFileSync } = require('child_process');
   execFileSync('python3', ['-c', `open(${JSON.stringify(sjisPath)},'wb').write('顧客名,案件名\\r\\nＦ株式会社,"保守,運用"\\r\\nＦ株式会社,\\r\\nA社,保守サポート\\r\\nA社,新案件\\r\\n,孤立案件\\r\\n'.encode('shift_jis'))`]);
+  await goSetting(page, 'master');
   await page.setInputFiles('#masterImport', sjisPath);
   await page.waitForSelector('#dialog[open]');
   const res = await page.textContent('#dialogMessage');
@@ -371,7 +383,7 @@ function check(name, cond, detail = '') {
   const s11 = await getState();
   s11.records.push({ id: 'csv1', start: await base(8, 0), end: await base(8, 30), type: 'work', categoryId: 'cat2', customer: 'A社', project: '新規提案', memo: 'カンマ,と"引用符"と\n改行' });
   await setState(s11);
-  await page.click('.tab[data-screen="report"]');
+  await goSetting(page, 'export');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#csvDay')]);
   const buf = fs.readFileSync(await dl.path());
   check('CSVはBOM付きUTF-8', buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF);
@@ -392,7 +404,7 @@ function check(name, cond, detail = '') {
   // データを壊してから復元
   await page.evaluate((k) => localStorage.removeItem(k), KEY);
   await page.reload();
-  await page.click('.tab[data-screen="report"]');
+  await goSetting(page, 'export');
   const badPath = path.join(tmp, 'bad.json');
   fs.writeFileSync(badPath, JSON.stringify({ version: 1, categories: [], records: 'x' }));
   await page.setInputFiles('#jsonRestore', badPath);
@@ -446,7 +458,7 @@ function check(name, cond, detail = '') {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.click('.tab[data-screen="report"]');
   await page.screenshot({ path: path.join(SHOT_DIR, 'report-1280.png'), fullPage: true });
-  await page.click('.tab[data-screen="settings"]');
+  await goSetting(page, 'buttons');
   await page.screenshot({ path: path.join(SHOT_DIR, 'settings-1280.png'), fullPage: true });
   await page.setViewportSize({ width: 360, height: 900 });
   await page.click('.tab[data-screen="record"]');
@@ -487,25 +499,27 @@ function check(name, cond, detail = '') {
   p2.on('pageerror', (e) => errors.push(e.message));
   const st2 = () => p2.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
   const bar = () => p2.textContent('#fileBar');
+  const fileDesc = () => p2.textContent('#menuFileDesc');
+  const waitSaved = () => p2.waitForFunction(() => document.querySelector('#recSaved').textContent.includes('自動保存済み'));
   await p2.goto(URL);
   check('未設定のときは案内を表示', (await bar()).includes('データファイル未設定'));
   await p2.click('[data-fk="bar-create"]');
-  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
-  check('データファイルを作成して保存', fs.existsSync(fpath('data.json')) && readF('data.json').version === 2 && (await bar()).includes('data.json に自動保存中'));
+  await waitSaved();
+  check('データファイルを作成して保存', fs.existsSync(fpath('data.json')) && readF('data.json').version === 2 && (await fileDesc()) === 'data.json に自動保存中' && (await p2.locator('#fileBar').isHidden()));
   await p2.click('#workGrid .work-btn >> nth=0');
   await p2.fill('#recMemo', 'ファイル保存');
   await p2.waitForTimeout(600);
   let fd = readF('data.json');
   check('操作がデータファイルに自動保存される', fd.records.length === 1 && fd.records[0].end === null && fd.records[0].memo === 'ファイル保存');
   await p2.reload();
-  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
+  await waitSaved();
   check('再読み込み後も自動で再接続し計測を継続', (await p2.textContent('#recCurrentName')).includes('電話対応') && (await p2.inputValue('#recMemo')) === 'ファイル保存');
   await p2.evaluate(() => localStorage.setItem('__fakePerm', 'prompt'));
   await p2.reload();
   await p2.waitForTimeout(200);
   check('許可が切れていると再接続を求める', (await bar()).includes('再接続が必要'));
   await p2.click('[data-fk="bar-reconnect"]');
-  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
+  await waitSaved();
   check('再接続ボタンで接続', true);
   // ファイルの方が新しい場合はファイルに合わせる
   fd = readF('data.json');
@@ -513,7 +527,7 @@ function check(name, cond, detail = '') {
   fd.savedAt = Date.now() + 1000;
   fs.writeFileSync(fpath('data.json'), JSON.stringify(fd));
   await p2.reload();
-  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
+  await waitSaved();
   check('ファイルの方が新しければファイルの内容を使う', (await st2()).records.some((r) => r.id === 'fileonly'));
   // ブラウザ内の方が新しい場合（前回ファイルに書けなかった変更）はファイルへ書き込む
   await p2.evaluate((k) => {
@@ -531,7 +545,7 @@ function check(name, cond, detail = '') {
   other.savedAt = 1;
   fs.writeFileSync(fpath('other.json'), JSON.stringify(other));
   fs.writeFileSync(fpath('bad.json'), 'これはJSONではない');
-  await p2.click('.tab[data-screen="report"]');
+  await goSetting(p2, 'file');
   await p2.evaluate(() => localStorage.setItem('__nextFile', 'bad.json'));
   await p2.click('#fileOpen');
   await p2.waitForSelector('#dialog[open]');
@@ -543,12 +557,12 @@ function check(name, cond, detail = '') {
   check('開く前に置き換えを確認', (await p2.textContent('#dialogMessage')).includes('記録 1件'));
   await p2.click('#dialog[open] #dialogButtons button >> text=ファイルの内容で置き換える');
   await p2.waitForTimeout(100);
-  check('既存のファイルを開いて切り替え', (await st2()).records.length === 1 && (await bar()).includes('other.json'));
+  check('既存のファイルを開いて切り替え', (await st2()).records.length === 1 && (await fileDesc()).includes('other.json'));
   await p2.click('.tab[data-screen="record"]');
   await p2.click('#workGrid .work-btn >> nth=2');
   await p2.waitForTimeout(600);
   check('切り替えたファイルに保存される', readF('other.json').records.length === 2);
-  await p2.click('.tab[data-screen="report"]');
+  await goSetting(p2, 'file');
   await p2.click('#fileDisconnect');
   await p2.click('#dialog[open] #dialogButtons button >> text=接続を解除');
   await p2.waitForTimeout(100);
@@ -567,6 +581,10 @@ function check(name, cond, detail = '') {
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
 
+async function goSetting(page, name) {
+  await page.click('.tab[data-screen="menu"]');
+  await page.click(`.menu-item[data-go="${name}"]`);
+}
 function gridNamesOn(page, sel) {
   return page.$$eval(`${sel} .work-btn .work-name`, (n) => n.map((x) => x.textContent));
 }
