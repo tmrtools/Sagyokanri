@@ -490,7 +490,13 @@ function check(name, cond, detail = '') {
     class FakeHandle {
       constructor(n) { this.name = n; this.kind = 'file'; }
       async queryPermission() { return localStorage.getItem('__fakePerm') || 'granted'; }
-      async requestPermission() { localStorage.removeItem('__fakePerm'); return 'granted'; }
+      async requestPermission() {
+        // ファイル選択に時間がかかって Chrome が確認を出せなかった状態を再現
+        if (localStorage.getItem('__fakeNoActivation')) { localStorage.removeItem('__fakeNoActivation'); throw new DOMException('User activation is required to request permissions.', 'SecurityError'); }
+        if (localStorage.getItem('__fakeDeny')) return 'denied';
+        localStorage.removeItem('__fakePerm');
+        return 'granted';
+      }
       async getFile() { const t = await window.__fsRead(this.name); return { text: async () => t }; }
       async createWritable() {
         let buf = '';
@@ -571,9 +577,22 @@ function check(name, cond, detail = '') {
   await p2.waitForSelector('#dialog[open]');
   check('不正なファイルは開かない', (await p2.textContent('#dialogTitle')) === '開けません' && fs.readFileSync(fpath('bad.json'), 'utf8') === 'これはJSONではない');
   await p2.click('#dialog[open] #dialogButtons button >> text=OK');
-  await p2.evaluate(() => localStorage.setItem('__nextFile', 'other.json'));
+  // 許可を拒否された場合
+  await p2.evaluate(() => { localStorage.setItem('__nextFile', 'other.json'); localStorage.setItem('__fakePerm', 'prompt'); localStorage.setItem('__fakeDeny', '1'); });
   await p2.click('#fileOpen');
   await p2.waitForSelector('#dialog[open]');
+  check('確認が時間切れなら「許可する」ボタンを出す', (await p2.textContent('#dialogTitle')) === '保存の許可');
+  await p2.click('#dialog[open] #dialogButtons button >> text=許可する');
+  await p2.waitForFunction(() => document.querySelector('#dialogTitle').textContent === '保存の許可が得られませんでした');
+  check('拒否されたときは許可の方法を案内する', (await p2.textContent('#dialogMessage')).includes('サイトの設定'));
+  await p2.click('#dialog[open] #dialogButtons button >> text=OK');
+  // 時間切れのあと「許可する」で接続できる場合
+  await p2.evaluate(() => { localStorage.removeItem('__fakeDeny'); localStorage.setItem('__fakeNoActivation', '1'); });
+  await p2.click('#fileOpen');
+  await p2.waitForSelector('#dialog[open]');
+  check('時間切れのとき「保存の許可」を表示', (await p2.textContent('#dialogTitle')) === '保存の許可');
+  await p2.click('#dialog[open] #dialogButtons button >> text=許可する');
+  await p2.waitForFunction(() => document.querySelector('#dialogTitle').textContent === 'データファイルを開く');
   check('開く前に置き換えを確認', (await p2.textContent('#dialogMessage')).includes('記録 1件'));
   await p2.click('#dialog[open] #dialogButtons button >> text=ファイルの内容で置き換える');
   await p2.waitForTimeout(100);

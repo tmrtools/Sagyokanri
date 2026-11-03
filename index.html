@@ -1499,14 +1499,37 @@ async function initDataFile() {
   if (perm === 'granted') await syncWithFile(h);
   else { fileStore.status = 'needPermission'; renderFileBar(); }
 }
+/**
+ * ファイルへの書き込みの許可を得る。
+ * Chrome はボタンを押した直後しか許可の確認を出せないため、ファイル選択に時間がかかって
+ * 確認を出せなかったときは「許可する」ボタンを出し、押してもらってから改めて確認する。
+ */
+async function requestWritePermission(h) {
+  try {
+    if (await h.queryPermission({ mode: 'readwrite' }) === 'granted') return 'granted';
+  } catch (_) { /* 確認へ進む */ }
+  try {
+    const p = await h.requestPermission({ mode: 'readwrite' });
+    if (p === 'granted') return p;
+  } catch (_) { /* 時間切れなど。下でもう一度確認する */ }
+  const again = await openDialog({
+    title: '保存の許可',
+    message: `『${h.name}』に記録を保存するには、許可が必要です。\n「許可する」を押し、Chrome の確認で「ファイルを編集」（または「許可」）を選んでください。`,
+    cancelValue: false,
+    buttons: [{ label: 'キャンセル', value: false }, { label: '許可する', value: true, primary: true }],
+  });
+  if (!again) return 'denied';
+  try { return await h.requestPermission({ mode: 'readwrite' }); } catch (_) { return 'denied'; }
+}
+const PERMISSION_HELP = 'Chrome の確認で「ファイルを編集」（または「許可」）を選ぶと保存できます。\n確認が表示されない場合は、アドレスバー左のアイコン →「サイトの設定」で「ファイルの編集」を「確認（デフォルト）」に戻してから、もう一度お試しください。';
+
 async function reconnectDataFile() {
   const h = fileStore.handle;
   if (!h) return;
-  let perm = 'denied';
-  try { perm = await h.requestPermission({ mode: 'readwrite' }); } catch (_) { perm = 'denied'; }
+  const perm = await requestWritePermission(h);
   if (perm !== 'granted') {
     fileStore.status = 'needPermission';
-    fileStore.message = 'アクセスが許可されませんでした。';
+    fileStore.message = 'アクセスが許可されませんでした。「再接続」を押し、Chrome の確認で「ファイルを編集」を選んでください。';
     renderFileBar();
     return;
   }
@@ -1535,9 +1558,11 @@ async function openDataFile() {
     if (e.name !== 'AbortError') await alertDialog('開けません', `データファイルを開けませんでした（${e.name}）。`);
     return;
   }
-  let perm = 'denied';
-  try { perm = await h.requestPermission({ mode: 'readwrite' }); } catch (_) { perm = 'denied'; }
-  if (perm !== 'granted') { await alertDialog('開けません', '書き込みが許可されなかったため、このファイルには保存できません。'); return; }
+  const perm = await requestWritePermission(h);
+  if (perm !== 'granted') {
+    await alertDialog('保存の許可が得られませんでした', `『${h.name}』への書き込みが許可されなかったため、まだ接続していません。\n\n${PERMISSION_HELP}`);
+    return;
+  }
   let text;
   try { text = await readHandle(h); } catch (e) { await alertDialog('開けません', `ファイルを読み込めませんでした（${e.name}）。`); return; }
   if (!text.trim()) {
