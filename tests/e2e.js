@@ -26,6 +26,8 @@ function check(name, cond, detail = '') {
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  const otherFiles = new Set();
+  page.on('request', (r) => { if (r.url().startsWith('file://') && !r.url().split('#')[0].endsWith('/index.html')) otherFiles.add(r.url()); });
 
   const getState = () => page.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
   const setState = async (s) => { await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [KEY, s]); await page.reload(); };
@@ -386,7 +388,7 @@ function check(name, cond, detail = '') {
   const [dj] = await Promise.all([page.waitForEvent('download'), page.click('#jsonBackup')]);
   const jsonPath = await dj.path();
   const backup = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-  check('JSONにバージョン番号', backup.version === 1);
+  check('JSONにバージョン番号', backup.version === 2);
   // データを壊してから復元
   await page.evaluate((k) => localStorage.removeItem(k), KEY);
   await page.reload();
@@ -451,6 +453,114 @@ function check(name, cond, detail = '') {
   await page.click('#workGrid .work-btn >> nth=1');
   await page.screenshot({ path: path.join(SHOT_DIR, 'record-360.png'), fullPage: true });
 
+  // ---------------------------------------------------------------
+  console.log('14. データファイルへの自動保存');
+  // ファイル選択ダイアログは自動操作できないため、実ファイルを読み書きする代替ハンドルを使う
+  const fsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sgk-fs-'));
+  const fpath = (n) => path.join(fsDir, n);
+  const readF = (n) => JSON.parse(fs.readFileSync(fpath(n), 'utf8'));
+  const ctx2 = await browser.newContext({ viewport: { width: 360, height: 900 }, locale: 'ja-JP' });
+  await ctx2.exposeFunction('__fsRead', (n) => (fs.existsSync(fpath(n)) ? fs.readFileSync(fpath(n), 'utf8') : ''));
+  await ctx2.exposeFunction('__fsWrite', (n, t) => fs.writeFileSync(fpath(n), t));
+  await ctx2.addInitScript(() => {
+    class FakeHandle {
+      constructor(n) { this.name = n; this.kind = 'file'; }
+      async queryPermission() { return localStorage.getItem('__fakePerm') || 'granted'; }
+      async requestPermission() { localStorage.removeItem('__fakePerm'); return 'granted'; }
+      async getFile() { const t = await window.__fsRead(this.name); return { text: async () => t }; }
+      async createWritable() {
+        let buf = '';
+        const n = this.name;
+        return { write: async (d) => { buf += d; }, close: async () => { await window.__fsWrite(n, buf); } };
+      }
+    }
+    const next = () => localStorage.getItem('__nextFile') || 'data.json';
+    window.showSaveFilePicker = async () => new FakeHandle(next());
+    window.showOpenFilePicker = async () => [new FakeHandle(next())];
+    window.sagyoHandleStore = {
+      get: async () => { const n = localStorage.getItem('__fakeHandle'); return n ? new FakeHandle(n) : null; },
+      set: async (h) => localStorage.setItem('__fakeHandle', h.name),
+      del: async () => localStorage.removeItem('__fakeHandle'),
+    };
+  });
+  const p2 = await ctx2.newPage();
+  p2.on('pageerror', (e) => errors.push(e.message));
+  const st2 = () => p2.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
+  const bar = () => p2.textContent('#fileBar');
+  await p2.goto(URL);
+  check('未設定のときは案内を表示', (await bar()).includes('データファイル未設定'));
+  await p2.click('[data-fk="bar-create"]');
+  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
+  check('データファイルを作成して保存', fs.existsSync(fpath('data.json')) && readF('data.json').version === 2 && (await bar()).includes('data.json に自動保存中'));
+  await p2.click('#workGrid .work-btn >> nth=0');
+  await p2.fill('#recMemo', 'ファイル保存');
+  await p2.waitForTimeout(600);
+  let fd = readF('data.json');
+  check('操作がデータファイルに自動保存される', fd.records.length === 1 && fd.records[0].end === null && fd.records[0].memo === 'ファイル保存');
+  await p2.reload();
+  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
+  check('再読み込み後も自動で再接続し計測を継続', (await p2.textContent('#recCurrentName')).includes('電話対応') && (await p2.inputValue('#recMemo')) === 'ファイル保存');
+  await p2.evaluate(() => localStorage.setItem('__fakePerm', 'prompt'));
+  await p2.reload();
+  await p2.waitForTimeout(200);
+  check('許可が切れていると再接続を求める', (await bar()).includes('再接続が必要'));
+  await p2.click('[data-fk="bar-reconnect"]');
+  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
+  check('再接続ボタンで接続', true);
+  // ファイルの方が新しい場合はファイルに合わせる
+  fd = readF('data.json');
+  fd.records.unshift({ id: 'fileonly', start: fd.records[0].start - 3600000, end: fd.records[0].start - 1800000, type: 'work', categoryId: 'cat2', customer: '', project: '', memo: '別PCで追加' });
+  fd.savedAt = Date.now() + 1000;
+  fs.writeFileSync(fpath('data.json'), JSON.stringify(fd));
+  await p2.reload();
+  await p2.waitForFunction(() => document.querySelector('#fileBar').textContent.includes('自動保存中'));
+  check('ファイルの方が新しければファイルの内容を使う', (await st2()).records.some((r) => r.id === 'fileonly'));
+  // ブラウザ内の方が新しい場合（前回ファイルに書けなかった変更）はファイルへ書き込む
+  await p2.evaluate((k) => {
+    const d = JSON.parse(localStorage.getItem(k));
+    d.records[0].memo = '未保存の変更';
+    d.savedAt = Date.now() + 5000;
+    localStorage.setItem(k, JSON.stringify(d));
+  }, KEY);
+  await p2.reload();
+  await p2.waitForTimeout(500);
+  check('ブラウザ内の方が新しければファイルへ書き込む', readF('data.json').records.find((r) => r.id === 'fileonly').memo === '未保存の変更');
+  // 既存のファイルを開く
+  const other = JSON.parse(fs.readFileSync(fpath('data.json'), 'utf8'));
+  other.records = [{ id: 'other1', start: Date.now() - 7200000, end: Date.now() - 3600000, type: 'work', categoryId: 'cat4', customer: 'Z社', project: '', memo: '' }];
+  other.savedAt = 1;
+  fs.writeFileSync(fpath('other.json'), JSON.stringify(other));
+  fs.writeFileSync(fpath('bad.json'), 'これはJSONではない');
+  await p2.click('.tab[data-screen="report"]');
+  await p2.evaluate(() => localStorage.setItem('__nextFile', 'bad.json'));
+  await p2.click('#fileOpen');
+  await p2.waitForSelector('#dialog[open]');
+  check('不正なファイルは開かない', (await p2.textContent('#dialogTitle')) === '開けません' && fs.readFileSync(fpath('bad.json'), 'utf8') === 'これはJSONではない');
+  await p2.click('#dialog[open] #dialogButtons button >> text=OK');
+  await p2.evaluate(() => localStorage.setItem('__nextFile', 'other.json'));
+  await p2.click('#fileOpen');
+  await p2.waitForSelector('#dialog[open]');
+  check('開く前に置き換えを確認', (await p2.textContent('#dialogMessage')).includes('記録 1件'));
+  await p2.click('#dialog[open] #dialogButtons button >> text=ファイルの内容で置き換える');
+  await p2.waitForTimeout(100);
+  check('既存のファイルを開いて切り替え', (await st2()).records.length === 1 && (await bar()).includes('other.json'));
+  await p2.click('.tab[data-screen="record"]');
+  await p2.click('#workGrid .work-btn >> nth=2');
+  await p2.waitForTimeout(600);
+  check('切り替えたファイルに保存される', readF('other.json').records.length === 2);
+  await p2.click('.tab[data-screen="report"]');
+  await p2.click('#fileDisconnect');
+  await p2.click('#dialog[open] #dialogButtons button >> text=接続を解除');
+  await p2.waitForTimeout(100);
+  const before = fs.readFileSync(fpath('other.json'), 'utf8');
+  await p2.click('.tab[data-screen="record"]');
+  await p2.click('#workGrid .work-btn >> nth=3');
+  await p2.waitForTimeout(600);
+  check('接続を解除するとファイルに書かない', (await bar()).includes('未設定') && fs.readFileSync(fpath('other.json'), 'utf8') === before);
+  await p2.screenshot({ path: path.join(SHOT_DIR, 'record-360-file.png') });
+  await ctx2.close();
+
+  check('index.html 以外のファイルを読み込んでいない', otherFiles.size === 0, [...otherFiles].join(', '));
   check('ページでJavaScriptエラーが発生していない', errors.length === 0, errors.join(' | '));
   console.log(`\n結果: ${passed} 件成功 / ${failed} 件失敗（スクリーンショット: ${SHOT_DIR}）`);
   await browser.close();
