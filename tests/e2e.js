@@ -551,6 +551,14 @@ function check(name, cond, detail = '') {
   await p2.reload();
   await p2.waitForTimeout(500);
   check('ブラウザ内の方が新しければファイルへ書き込む', readF('data.json').records.find((r) => r.id === 'fileonly').memo === '未保存の変更');
+  // 画面に戻ったとき、ほかの端末（Android）で更新されたファイルを読み込む
+  fd = readF('data.json');
+  fd.records.push({ id: 'phone1', start: Date.now() - 600000, end: Date.now() - 300000, type: 'work', categoryId: 'cat4', customer: '', project: '', memo: 'スマホで記録' });
+  fd.savedAt = Date.now() + 60000;
+  fs.writeFileSync(fpath('data.json'), JSON.stringify(fd));
+  await p2.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await p2.waitForTimeout(300);
+  check('画面に戻ると、ほかの端末で更新された内容を読み込む', (await st2()).records.some((r) => r.id === 'phone1'));
   // 既存のファイルを開く
   const other = JSON.parse(fs.readFileSync(fpath('data.json'), 'utf8'));
   other.records = [{ id: 'other1', start: Date.now() - 7200000, end: Date.now() - 3600000, type: 'work', categoryId: 'cat4', customer: 'Z社', project: '', memo: '' }];
@@ -586,6 +594,97 @@ function check(name, cond, detail = '') {
   await p2.screenshot({ path: path.join(SHOT_DIR, 'record-360-file.png') });
   await ctx2.close();
 
+  // ---------------------------------------------------------------
+  console.log('15. Android（ファイルへ直接保存できないブラウザ）');
+  const ctx3 = await browser.newContext({ viewport: { width: 360, height: 800 }, locale: 'ja-JP', acceptDownloads: true });
+  const sharedFiles = [];
+  await ctx3.exposeFunction('__shared', (name, text) => { sharedFiles.push({ name, text }); });
+  await ctx3.addInitScript(() => {
+    delete window.showSaveFilePicker;
+    delete window.showOpenFilePicker;
+    if (localStorage.getItem('__noShare')) return;
+    navigator.canShare = (d) => !!(d && d.files && d.files.length);
+    navigator.share = async (d) => { for (const f of d.files) await window.__shared(f.name, await f.text()); };
+  });
+  const p3 = await ctx3.newPage();
+  p3.on('pageerror', (e) => errors.push(e.message));
+  const st3 = () => p3.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
+  await p3.goto(URL);
+  check('手動モードの案内を表示', (await p3.textContent('#fileBar')).includes('共有して保存') && await p3.locator('#fileBar').isVisible());
+  await p3.click('#workGrid .work-btn >> nth=1');
+  check('未共有の変更を表示', (await p3.textContent('#recSaved')).includes('未共有'));
+  await p3.click('#recEnd');
+  await p3.waitForSelector('#dialog[open]');
+  check('業務終了時に OneDrive への保存を案内', (await p3.textContent('#dialogTitle')) === 'OneDrive への保存');
+  await p3.click('#dialog[open] #dialogButtons button >> text=共有して保存');
+  await p3.waitForTimeout(200);
+  check('共有でデータファイルを渡す', sharedFiles.length === 1 && sharedFiles[0].name === '作業記録データ.json' && JSON.parse(sharedFiles[0].text).records.length === 1);
+  check('共有後は案内を隠し「保存済み」表示', await p3.locator('#fileBar').isHidden() && (await p3.textContent('#recSaved')) === '📱 端末に保存済み');
+  // パソコンで更新されたファイルを読み込む
+  const pc = JSON.parse(sharedFiles[0].text);
+  pc.records.push({ id: 'pc1', start: Date.now() - 900000, end: Date.now() - 800000, type: 'work', categoryId: 'cat2', customer: 'A社', project: '', memo: 'PCで記録' });
+  pc.savedAt = Date.now() + 1000;
+  const tmp3 = fs.mkdtempSync(path.join(os.tmpdir(), 'sgk-and-'));
+  const pcPath = path.join(tmp3, '作業記録データ.json');
+  fs.writeFileSync(pcPath, JSON.stringify(pc));
+  await goSetting(p3, 'file');
+  check('設定画面に読み込み・共有のボタン', await p3.locator('#fileManual').isVisible() && await p3.locator('#fileAuto').isHidden());
+  await p3.setInputFiles('#manualLoadInput', pcPath);
+  await p3.waitForSelector('#dialog[open]');
+  check('読み込み前に置き換えを確認', (await p3.textContent('#dialogMessage')).includes('記録 2件'));
+  await p3.click('#dialog[open] #dialogButtons button >> text=ファイルの内容で置き換える');
+  await p3.waitForTimeout(100);
+  check('データファイルを読み込める', (await st3()).records.some((r) => r.id === 'pc1'));
+  // 端末側が新しいまま古いファイルを読み込もうとすると警告
+  await p3.click('.tab[data-screen="record"]');
+  await p3.click('#workGrid .work-btn >> nth=3');
+  const old = JSON.parse(sharedFiles[0].text);
+  old.savedAt = 1;
+  fs.writeFileSync(pcPath, JSON.stringify(old));
+  await goSetting(p3, 'file');
+  await p3.setInputFiles('#manualLoadInput', pcPath);
+  await p3.waitForSelector('#dialog[open]');
+  check('端末の方が新しいときは警告する', (await p3.textContent('#dialogMessage')).includes('この端末のデータ'));
+  await p3.click('#dialog[open] #dialogButtons button >> text=キャンセル');
+  check('キャンセルすると端末のデータを残す', (await st3()).records.length === 3);
+  // 共有に対応していないときはダウンロード
+  await p3.evaluate(() => localStorage.setItem('__noShare', '1'));
+  await p3.reload();
+  await goSetting(p3, 'file');
+  const [dl3] = await Promise.all([p3.waitForEvent('download'), p3.click('#manualShare')]);
+  check('共有できないブラウザではダウンロードする', dl3.suggestedFilename() === '作業記録データ.json');
+  await p3.screenshot({ path: path.join(SHOT_DIR, 'android-file.png'), fullPage: true });
+  await ctx3.close();
+
+  // ---------------------------------------------------------------
+  console.log('16. Web上での表示（ホーム画面への追加・オフライン）');
+  const { spawn } = require('child_process');
+  const port = 8765 + Math.floor(Math.random() * 1000);
+  const server = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: path.resolve(__dirname, '..'), stdio: 'ignore' });
+  try {
+    const base = `http://127.0.0.1:${port}/`;
+    for (let i = 0; i < 50; i++) { try { await fetch(base); break; } catch (_) { await new Promise((r) => setTimeout(r, 100)); } }
+    const ctx4 = await browser.newContext({ viewport: { width: 360, height: 800 }, locale: 'ja-JP' });
+    const p4 = await ctx4.newPage();
+    p4.on('pageerror', (e) => errors.push(e.message));
+    await p4.goto(`${base}index.html`);
+    await p4.evaluate(() => navigator.serviceWorker.ready);
+    const man = await p4.evaluate(async () => {
+      const href = document.querySelector('link[rel=manifest]').href;
+      const m = await (await fetch(href)).json();
+      const icons = await Promise.all(m.icons.map(async (i) => (await fetch(new URL(i.src, href))).ok));
+      return { name: m.name, display: m.display, icons };
+    });
+    check('マニフェストとアイコンを読み込める', man.name === '作業記録' && man.display === 'standalone' && man.icons.every(Boolean), JSON.stringify(man));
+    await p4.reload(); // サービスワーカーの管理下で読み込み直す
+    await p4.click('#workGrid .work-btn >> nth=0');
+    await ctx4.setOffline(true);
+    await p4.reload();
+    check('オフラインでも開ける', (await p4.locator('#workGrid .work-btn').count()) === 6 && (await p4.textContent('#recCurrentName')).includes('電話対応'));
+    await ctx4.close();
+  } finally {
+    server.kill();
+  }
   check('index.html 以外のファイルを読み込んでいない', otherFiles.size === 0, [...otherFiles].join(', '));
   check('ページでJavaScriptエラーが発生していない', errors.length === 0, errors.join(' | '));
   console.log(`\n結果: ${passed} 件成功 / ${failed} 件失敗（スクリーンショット: ${SHOT_DIR}）`);

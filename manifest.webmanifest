@@ -1,0 +1,17 @@
+{
+  "name": "作業記録",
+  "short_name": "作業記録",
+  "description": "日中の作業をワンタップで記録し、日報テキストを作るツール",
+  "lang": "ja",
+  "start_url": "./index.html#record",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12171D",
+  "theme_color": "#12171D",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

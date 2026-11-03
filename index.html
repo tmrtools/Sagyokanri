@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>作業記録</title>
+  <meta name="theme-color" content="#12171D">
   <style>
 :root {
   --bg: #12171D;
@@ -216,6 +217,8 @@ main { padding: 12px; }
 }
 .back-btn:hover { color: var(--text); }
 .file-name { font-size: 16px; margin: 0; word-break: break-all; }
+.how-list { margin: 6px 0; padding-left: 20px; }
+.how-list li { margin-bottom: 4px; }
 
 /* 日報画面 */
 .section-head { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 6px; }
@@ -787,15 +790,31 @@ main { padding: 12px; }
         <h2 id="fileNowHeading" class="section-title">保存先</h2>
         <p id="fileName" class="file-name"></p>
         <p id="fileInfo" class="note"></p>
-        <div class="stack">
+        <div id="fileAuto" class="stack">
           <button type="button" id="fileOpen" class="btn">既存のデータファイルを開く</button>
           <button type="button" id="fileCreate" class="btn">新しいデータファイルを作成</button>
           <button type="button" id="fileDisconnect" class="btn">接続を解除</button>
         </div>
+        <div id="fileManual" class="stack" hidden>
+          <label class="btn file-btn">データファイルを読み込む
+            <input type="file" id="manualLoadInput" accept=".json,application/json" class="visually-hidden">
+          </label>
+          <button type="button" id="manualShare" class="btn btn-primary">共有して保存（OneDrive へ）</button>
+          <p id="manualStatus" class="note" role="status" aria-live="polite"></p>
+        </div>
       </section>
       <section class="card" aria-labelledby="fileHowHeading">
         <h2 id="fileHowHeading" class="section-title">しくみ</h2>
-        <p class="note">記録するたびに、選んだデータファイルへ自動で保存します。ブラウザ内にも予備を保存しています。次回起動時は同じファイルに自動で再接続します。</p>
+        <p id="fileHowAuto" class="note">記録するたびに、選んだデータファイルへ自動で保存します。ブラウザ内にも予備を保存しています。次回起動時は同じファイルに自動で再接続し、ほかの端末で更新された内容があれば読み込みます。</p>
+        <div id="fileHowManual" class="note" hidden>
+          <p>この端末では、ファイルへ自動で保存できません。次の手順でパソコンとデータをやり取りします。</p>
+          <ol class="how-list">
+            <li>使い始めに「データファイルを読み込む」で、OneDrive にあるデータファイルを選びます。</li>
+            <li>記録はこの端末の中に保存されます。</li>
+            <li>使い終わったら「共有して保存」を押し、共有先で OneDrive を選んで、同じフォルダに同じ名前で保存します。</li>
+          </ol>
+          <p>同じ名前のファイルがすでにある場合、OneDrive が別の名前（「(1)」付きなど）で保存することがあります。その場合は、パソコンでそのファイルを開き直してください。</p>
+        </div>
       </section>
     </section>
 
@@ -1087,6 +1106,7 @@ function save() {
   state.savedAt = Date.now();
   const ok = persistLocal();
   scheduleFileWrite();
+  if (fileStore.status === 'unsupported' && typeof renderFileBar === 'function') renderFileBar();
   return ok;
 }
 /** ブラウザ内（localStorage）への保存。保存日時は変えない */
@@ -1235,6 +1255,7 @@ function endWork() {
   if (run) { run.end = Date.now(); save(); }
   reportDate = todayKey();
   showScreen('report');
+  if (fileStore.status === 'unsupported' && hasUnsyncedChanges()) promptManualShare();
 }
 /** 直前の作業（実行中を除く最新の作業記録。休憩は除く） */
 function previousWork() {
@@ -1565,6 +1586,118 @@ async function disconnectDataFile() {
   renderFileBar();
 }
 
+/* ----- 手動でのやり取り（Android など、ファイルへ直接保存できないブラウザ） ----- */
+const MANUAL_KEY = 'sagyokanri:manual';
+function loadManualInfo() {
+  try { return JSON.parse(localStorage.getItem(MANUAL_KEY)) || {}; } catch (_) { return {}; }
+}
+let manualInfo = loadManualInfo();
+function saveManualInfo() {
+  try { localStorage.setItem(MANUAL_KEY, JSON.stringify(manualInfo)); } catch (_) { /* 予備情報なので無視 */ }
+}
+const manualFileName = () => manualInfo.name || '作業記録データ.json';
+/** 最後に読み込み・共有してから、この端末で変更があったか */
+const hasUnsyncedChanges = () => !!state.savedAt && state.savedAt > (manualInfo.syncedSavedAt || 0);
+
+async function shareDataFile() {
+  const name = manualFileName();
+  const text = JSON.stringify(state, null, 2);
+  let shared = false;
+  if (typeof File === 'function' && navigator.canShare && navigator.share) {
+    const file = new File([text], name, { type: 'application/json' });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: name });
+        shared = true;
+      } catch (e) {
+        if (e.name === 'AbortError') return false; // 共有画面を閉じた
+      }
+    }
+  }
+  if (!shared) download(name, text, 'application/json');
+  manualInfo = { ...manualInfo, name, syncedSavedAt: state.savedAt, lastSyncAt: Date.now() };
+  saveManualInfo();
+  $('#manualStatus').textContent = shared
+    ? `✓ 『${name}』を共有しました。OneDrive を選んだ場合は、保存されたファイル名を確認してください。`
+    : `✓ 『${name}』をダウンロードしました。OneDrive の同じフォルダにアップロードしてください。`;
+  renderFileBar();
+  return true;
+}
+
+async function loadManualFile(file) {
+  let d;
+  try {
+    d = parseStored((await file.text()).replace(/^\uFEFF/, ''));
+  } catch (e) {
+    await alertDialog('読み込めません', `データファイルの内容が正しくありません。\n理由：${e instanceof SyntaxError ? 'JSONとして読み込めません。' : e.message}`);
+    return;
+  }
+  if (state.records.length) {
+    const localNewer = state.savedAt > (d.savedAt || 0);
+    const warn = localNewer && hasUnsyncedChanges()
+      ? `\n\n⚠ この端末のデータ（最終保存 ${fmtSavedAt(state.savedAt)}）の方が新しく、まだ共有していない変更があります。置き換えると、その変更は失われます。`
+      : '';
+    const ok = await confirmDialog('データファイルを読み込む',
+      `『${file.name}』（記録 ${d.records.length}件、最終保存 ${fmtSavedAt(d.savedAt)}）を読み込み、この端末のデータ（記録 ${state.records.length}件）を置き換えます。${warn}`,
+      'ファイルの内容で置き換える', !!warn);
+    if (!ok) return;
+  }
+  manualInfo = { name: file.name, syncedSavedAt: d.savedAt || 0, lastSyncAt: Date.now() };
+  saveManualInfo();
+  adoptState(d);
+  $('#manualStatus').textContent = `✓ 『${file.name}』を読み込みました（記録 ${d.records.length}件）。`;
+  renderFileBar();
+  checkStaleRunning();
+}
+
+async function promptManualShare() {
+  const v = await openDialog({
+    title: 'OneDrive への保存',
+    message: 'パソコンでも続きを使う場合は、今日の記録をデータファイルとして保存してください。\n「共有して保存」を押し、共有先で OneDrive を選びます。',
+    cancelValue: false,
+    buttons: [{ label: 'あとで', value: false }, { label: '共有して保存', value: true, primary: true }],
+  });
+  if (v) await shareDataFile();
+}
+
+/** PC：画面に戻ったとき、ほかの端末で更新されたデータファイルを読み込む */
+let refreshingFile = false;
+async function refreshFromFile() {
+  if (refreshingFile || fileStore.status !== 'connected' || fileStore.dirty || !fileStore.handle || isDialogOpen()) return;
+  refreshingFile = true;
+  try {
+    const text = await readHandle(fileStore.handle);
+    if (!text.trim()) return;
+    const d = parseStored(text.replace(/^\uFEFF/, ''));
+    if (d.savedAt > state.savedAt && !fileStore.dirty) {
+      fileStore.lastWrite = d.savedAt;
+      adoptState(d);
+      renderFileBar();
+      checkStaleRunning();
+    }
+  } catch (_) {
+    /* 読めないときは次の保存時にエラーを表示する */
+  } finally {
+    refreshingFile = false;
+  }
+}
+
+/** Web上（https）で開いたときだけ、ホーム画面への追加とオフライン表示を有効にする */
+function setupPwa() {
+  if (!/^https?:$/.test(location.protocol)) return; // index.html を直接開いたときは何もしない
+  const manifest = el('link');
+  manifest.rel = 'manifest';
+  manifest.href = 'manifest.webmanifest';
+  const icon = el('link');
+  icon.rel = 'icon';
+  icon.href = 'icons/icon-192.png';
+  const apple = el('link');
+  apple.rel = 'apple-touch-icon';
+  apple.href = 'icons/icon-192.png';
+  document.head.append(manifest, icon, apple);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* オフライン非対応で続行 */ });
+}
+
 function renderFileBar() {
   const bar = $('#fileBar');
   bar.innerHTML = '';
@@ -1577,9 +1710,13 @@ function renderFileBar() {
   let desc = '';
   switch (fileStore.status) {
     case 'unsupported':
-      text.textContent = '⚠ このブラウザはデータファイルへの保存に対応していません。Chromeで開いてください（ブラウザ内にのみ保存中）。';
-      saved = '⚠ ブラウザ内のみ';
-      desc = '未対応のブラウザです（ブラウザ内にのみ保存中）';
+      text.textContent = '📱 この端末では、データファイルの「読み込み」と「共有して保存」でパソコンとデータをやり取りします。';
+      add('読み込む', () => $('#manualLoadInput').click(), 'bar-mload');
+      add('共有して保存', shareDataFile, 'bar-mshare');
+      saved = hasUnsyncedChanges() ? '📱 端末に保存（未共有の変更あり）' : '📱 端末に保存済み';
+      desc = manualInfo.lastSyncAt
+        ? `手動でやり取り（最終 ${fmtSavedAt(manualInfo.lastSyncAt)}）`
+        : '手動でやり取り（まだ読み込み・共有していません）';
       break;
     case 'none':
       text.textContent = '⚠ データファイル未設定（ブラウザ内にのみ保存中）';
@@ -1608,22 +1745,32 @@ function renderFileBar() {
     default:
       break;
   }
-  // 問題があるときだけ上部に警告を出す
-  bar.hidden = fileStore.status === 'connected';
+  // 問題があるときだけ上部に警告を出す（手動モードは一度もやり取りしていないときだけ案内する）
+  bar.hidden = fileStore.status === 'connected' || (fileStore.status === 'unsupported' && !!manualInfo.lastSyncAt);
   bar.append(text);
   if (acts.childElementCount) bar.append(acts);
 
   const rs = $('#recSaved');
   rs.textContent = saved;
   rs.title = fileStore.status === 'connected' ? `${name}（${fmtSavedAt(fileStore.lastWrite)} 保存）` : '';
-  rs.classList.toggle('is-warn', fileStore.status !== 'connected');
+  rs.classList.toggle('is-warn', fileStore.status !== 'connected' && !(fileStore.status === 'unsupported' && !hasUnsyncedChanges()));
   $('#menuFileDesc').textContent = desc;
 
   // 設定 > データファイル
-  $('#fileName').textContent = fileStore.handle ? name : '接続中のファイルはありません';
-  $('#fileInfo').textContent = fileStore.status === 'connected'
-    ? `自動保存中${fileStore.lastWrite ? `　最終保存 ${fmtSavedAt(fileStore.lastWrite)}` : ''}`
-    : desc;
+  const manual = fileStore.status === 'unsupported';
+  $('#fileAuto').hidden = manual;
+  $('#fileManual').hidden = !manual;
+  $('#fileHowAuto').hidden = manual;
+  $('#fileHowManual').hidden = !manual;
+  if (manual) {
+    $('#fileName').textContent = manualFileName();
+    $('#fileInfo').textContent = `${desc}${hasUnsyncedChanges() ? '　⚠ まだ共有していない変更があります' : ''}`;
+  } else {
+    $('#fileName').textContent = fileStore.handle ? name : '接続中のファイルはありません';
+    $('#fileInfo').textContent = fileStore.status === 'connected'
+      ? `自動保存中${fileStore.lastWrite ? `　最終保存 ${fmtSavedAt(fileStore.lastWrite)}` : ''}`
+      : desc;
+  }
   $('#fileCreate').disabled = !fsSupported;
   $('#fileOpen').disabled = !fsSupported;
   $('#fileDisconnect').disabled = !fileStore.handle;
@@ -2981,7 +3128,17 @@ function init() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tickRecord(); });
   setInterval(() => { if (currentScreen === 'record') tickRecord(); }, 1000);
   window.addEventListener('pagehide', () => { if (fileStore.dirty) writeFileNow(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && fileStore.dirty) writeFileNow(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (fileStore.dirty) writeFileNow(); } else refreshFromFile();
+  });
+  window.addEventListener('focus', refreshFromFile);
+  $('#manualShare').addEventListener('click', shareDataFile);
+  $('#manualLoadInput').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (f) await loadManualFile(f);
+  });
+  setupPwa();
   $('#fileCreate').addEventListener('click', createDataFile);
   $('#fileOpen').addEventListener('click', openDataFile);
   $('#fileDisconnect').addEventListener('click', disconnectDataFile);
