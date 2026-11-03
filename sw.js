@@ -1,6 +1,6 @@
 // オフライン用のサービスワーカー（Web上で開いたときだけ使われる）
 // ツールを更新したら CACHE の番号を上げる
-const CACHE = 'sagyokanri-v3';
+const CACHE = 'sagyokanri-v4';
 const FILES = [
   './',
   './index.html',
@@ -38,5 +38,16 @@ self.addEventListener('fetch', (e) => {
       .catch(() => caches.match(req, { ignoreSearch: true })
         .then((hit) => hit || (req.mode === 'navigate' ? caches.match('./index.html') : undefined))
         .then((hit) => hit || Response.error())),
+  );
+});
+
+// 通知を押したら、ツールの画面を前に出す（閉じていれば開く）
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) if ('focus' in c) return c.focus();
+      return self.clients.openWindow('./index.html#record');
+    }),
   );
 });

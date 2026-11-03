@@ -153,7 +153,7 @@ input:disabled { opacity: .5; }
 /* ---------- タブ ---------- */
 .tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr 64px;
+  grid-template-columns: 1fr 1.25fr 1fr 64px;
   padding-inline: max(6px, calc((100% - 720px) / 2));
   gap: 4px;
   padding: 6px;
@@ -592,6 +592,113 @@ main { padding: 12px; }
 .dialog-message { white-space: pre-line; margin: 0 0 12px; }
 .dialog-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 #dialogContent label { display: block; color: var(--sub); font-size: 13px; margin-bottom: 4px; }
+
+/* ---------- やること ---------- */
+.tab-badge {
+  display: inline-block; margin-left: 4px; min-width: 20px; padding: 0 6px;
+  border-radius: 10px; background: var(--warn); color: #1a1405;
+  font-size: 12px; font-weight: 700; line-height: 20px; font-variant-numeric: tabular-nums;
+}
+.alert-area { max-width: 720px; margin: 0 auto; padding: 0 12px; }
+.alert-item { border: 2px solid var(--warn); border-radius: 10px; background: #2c2614; padding: 10px; margin-top: 10px; }
+.alert-text { color: var(--warn); font-weight: 700; margin: 0; word-break: break-all; }
+.alert-sub { color: var(--sub); font-size: 13px; margin: 2px 0 0; white-space: pre-line; }
+.alert-actions { display: flex; gap: 6px; margin-top: 8px; }
+.alert-actions .btn { flex: 1; }
+
+.next-todo { margin: 12px 0 0; border: 1px solid var(--accent); border-radius: 10px; padding: 8px 10px; background: #15282a; }
+.next-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.next-label { font-size: 12px; color: var(--accent); font-weight: 700; }
+.next-title { font-weight: 700; font-size: 15px; margin: 2px 0; word-break: break-all; }
+.next-meta { font-size: 12px; color: var(--sub); }
+.next-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.next-empty { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--sub); }
+.link-btn { background: none; border: 0; color: var(--sub); font-size: 13px; min-height: var(--tap); padding: 0 4px; cursor: pointer; text-decoration: underline; }
+.over { color: var(--warn); font-weight: 700; }
+.tag-pri { font-size: 11px; border: 1px solid var(--warn); color: var(--warn); border-radius: 4px; padding: 0 4px; margin-left: 4px; font-weight: 400; white-space: nowrap; }
+
+.morning { border: 1px solid var(--accent); border-radius: 10px; padding: 10px; background: #15282a; margin-top: 12px; }
+.morning-title { font-weight: 700; color: var(--accent); margin: 0; font-size: 15px; }
+.morning ul { margin: 6px 0; padding-left: 18px; font-size: 14px; }
+.morning-actions { display: flex; justify-content: space-between; gap: 6px; }
+
+.vseg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 10px; }
+.vseg-btn { min-height: var(--tap); border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; font-size: 14px; }
+.vseg-btn small { margin-left: 4px; color: var(--sub); font-size: 12px; }
+.vseg-btn[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); font-weight: 700; }
+.todo-quick { margin-bottom: 8px; }
+.todo-quick-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 6px; }
+.todo-quick-row2 { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.todo-quick-row2 .note { flex: 1; margin: 0; }
+
+.cal-head { display: grid; grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap); gap: 6px; align-items: center; margin: 4px 0 6px; }
+.cal-title { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cal-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px; }
+.cal-mode .btn[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); font-weight: 700; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin-bottom: 8px; }
+.cal-wd { text-align: center; font-size: 11px; color: var(--sub); }
+.cal-day {
+  min-height: 52px; padding: 2px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; line-height: 1.2;
+}
+.cal-day .w { font-size: 11px; color: var(--sub); }
+.cal-day .n { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+.cal-day .c { font-size: 11px; color: var(--accent); font-weight: 700; min-height: 13px; }
+.cal-day.is-other { opacity: .35; }
+.cal-day.is-past { opacity: .55; }
+.cal-day.is-today { border-color: var(--text); }
+.cal-day.is-holiday .w, .cal-day.is-holiday .n { color: #e9a0a0; }
+.cal-day[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.cal-day[aria-pressed="true"] .w, .cal-day[aria-pressed="true"] .c, .cal-day[aria-pressed="true"] .n { color: var(--on-accent); }
+.cal-blank { min-height: 52px; }
+
+.todo-group { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 14px; margin: 14px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.todo-group span { font-size: 12px; color: var(--sub); font-weight: 400; }
+.todo-list { list-style: none; margin: 0; padding: 0; }
+.todo-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 6px; align-items: center; border-bottom: 1px solid var(--border); padding: 4px 0; min-height: 56px; }
+.todo-row.is-running { background: #15282a; border-radius: 8px; }
+.todo-chk {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; cursor: pointer; padding: 0;
+}
+.todo-chk span { width: 28px; height: 28px; border: 2px solid var(--sub); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.todo-chk[aria-checked="true"] span { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.todo-body { background: none; border: 0; text-align: left; cursor: pointer; padding: 4px 2px; min-height: var(--tap); min-width: 0; }
+.todo-body:hover .todo-title { text-decoration: underline; }
+.todo-title { font-size: 14px; word-break: break-all; }
+.todo-title .tm { font-weight: 700; margin-right: 6px; font-variant-numeric: tabular-nums; }
+.todo-meta { font-size: 12px; color: var(--sub); word-break: break-all; }
+.todo-meta > span + span::before { content: "　"; }
+.todo-row.is-done .todo-title { color: var(--sub); text-decoration: line-through; }
+.todo-play { min-width: var(--tap); white-space: nowrap; }
+.todo-play[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 12px; }
+.todo-empty { color: var(--sub); font-size: 14px; padding: 10px 0; }
+.todo-fold { width: 100%; margin-top: 10px; justify-content: space-between; border-style: dashed; color: var(--sub); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); cursor: pointer; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+.toggle-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.toggle-row { display: flex; gap: 4px; }
+.toggle { min-height: 40px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; font-size: 13px; padding: 4px 6px; }
+.toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+.toggle:disabled { opacity: .4; cursor: not-allowed; }
+.toggle-row .toggle { min-width: 88px; }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.te-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.te-actions .spacer { flex: 1; }
+.check-label { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; }
+.check-label input { width: 22px; height: 22px; }
+
+.end-list { list-style: none; margin: 0; padding: 0; }
+.end-item { border-bottom: 1px solid var(--border); padding: 6px 0; }
+.end-item-title { font-size: 14px; word-break: break-all; }
+.end-item .toggle-row { margin-top: 4px; flex-wrap: wrap; }
+.end-item .toggle-row .toggle { min-width: 0; flex: 1; }
+.end-item input[type="date"] { margin-top: 4px; }
+.end-sub { font-weight: 700; font-size: 14px; margin: 12px 0 4px; }
+.end-tomorrow { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.end-tomorrow li { padding: 4px 0; border-bottom: 1px solid var(--border); }
   </style>
 </head>
 <body>
@@ -599,10 +706,12 @@ main { padding: 12px; }
 
   <nav class="tabs" aria-label="画面の切り替え">
     <button type="button" class="tab" data-screen="record">記録</button>
+    <button type="button" class="tab" data-screen="todo">やること<span id="todoBadge" class="tab-badge" aria-hidden="true" hidden></span></button>
     <button type="button" class="tab" data-screen="report">日報</button>
     <button type="button" class="tab tab-gear" data-screen="menu"><span class="gear-icon" aria-hidden="true">⚙</span>設定</button>
   </nav>
   <div id="fileBar" class="file-bar" role="status" aria-live="polite" hidden></div>
+  <div id="alertArea" class="alert-area" aria-live="assertive"></div>
 
   <main>
     <!-- ========== 記録画面 ========== -->
@@ -616,6 +725,9 @@ main { padding: 12px; }
         </div>
         <div id="recSaved" class="rec-saved"></div>
       </div>
+
+      <div id="morningBox"></div>
+      <div id="nextTodo"></div>
 
       <div class="rec-current" aria-live="polite">
         <div id="recCurrentName" class="rec-current-name"></div>
@@ -655,6 +767,88 @@ main { padding: 12px; }
         <button type="button" id="recBreak" class="btn"></button>
         <button type="button" id="recEnd" class="btn btn-primary">業務終了</button>
       </div>
+    </section>
+
+    <!-- ========== やること ========== -->
+    <section id="screen-todo" class="screen screen-report" aria-labelledby="todoHeading" hidden>
+      <h1 id="todoHeading" class="visually-hidden">やること</h1>
+      <div class="vseg" role="group" aria-label="表示の切り替え">
+        <button type="button" class="vseg-btn" data-view="today" data-fk="todo-view-today">今日<small id="todoCntToday" class="num"></small></button>
+        <button type="button" class="vseg-btn" data-view="future" data-fk="todo-view-future">これから<small id="todoCntFuture" class="num"></small></button>
+        <button type="button" class="vseg-btn" data-view="done" data-fk="todo-view-done">完了</button>
+      </div>
+      <form id="todoQuickForm" class="todo-quick">
+        <div class="todo-quick-row">
+          <label class="visually-hidden" for="todoQuickTitle">やることの内容</label>
+          <input type="text" id="todoQuickTitle" placeholder="やることを入力" autocomplete="off">
+          <label class="visually-hidden" for="todoQuickTime">時刻（任意）</label>
+          <input type="time" id="todoQuickTime" aria-label="時刻（任意）">
+        </div>
+        <div class="todo-quick-row2">
+          <span id="todoQuickDate" class="note"></span>
+          <button type="button" id="todoDetailBtn" class="btn btn-small">詳しく設定</button>
+          <button type="submit" class="btn btn-small btn-primary">＋ 追加</button>
+        </div>
+      </form>
+      <div id="todoCal"></div>
+      <div id="todoList"></div>
+    </section>
+
+    <!-- ========== やることの追加・編集 ========== -->
+    <section id="screen-todoedit" class="screen screen-narrow" aria-labelledby="todoEditHeading" hidden>
+      <button type="button" class="back-btn" id="teBack">‹ やること</button>
+      <h1 id="todoEditHeading" class="screen-title">やることの追加</h1>
+      <form id="todoEditForm" class="stack" novalidate>
+        <div class="field">
+          <label for="teTitle">内容</label>
+          <input type="text" id="teTitle" autocomplete="off" required>
+        </div>
+        <div class="field">
+          <span class="field-label" id="teDateLabel">日付</span>
+          <div id="teDateChips" class="chips" role="group" aria-labelledby="teDateLabel"></div>
+        </div>
+        <div class="g2">
+          <div class="field">
+            <label for="teDate">日付を選ぶ</label>
+            <input type="date" id="teDate" required>
+          </div>
+          <div class="field">
+            <label for="teTime">時刻（任意）</label>
+            <input type="time" id="teTime">
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label" id="teNotifyLabel">お知らせ（複数選べます）</span>
+          <div id="teNotify" class="toggle-grid" role="group" aria-labelledby="teNotifyLabel"></div>
+          <p id="teNotifyNote" class="note"></p>
+        </div>
+        <div class="field">
+          <span class="field-label" id="tePriLabel">優先</span>
+          <div id="tePri" class="toggle-row" role="group" aria-labelledby="tePriLabel"></div>
+        </div>
+        <fieldset class="range">
+          <legend>「▶ 開始」で使う内容（任意）</legend>
+          <div class="field">
+            <label for="teCat">カテゴリ</label>
+            <select id="teCat"></select>
+          </div>
+          <div class="g2">
+            <div class="field"><label for="teCust">顧客</label><div id="teCustSlot"></div></div>
+            <div class="field"><label for="teProj">案件</label><div id="teProjSlot"></div></div>
+          </div>
+        </fieldset>
+        <div class="field">
+          <label for="teMemo">メモ</label>
+          <textarea id="teMemo" class="memo-input" rows="3" placeholder="任意（持ち物など）"></textarea>
+        </div>
+        <p id="teError" class="warn" role="alert" hidden></p>
+        <div class="te-actions">
+          <button type="button" id="teDelete" class="btn btn-small btn-danger">削除</button>
+          <span class="spacer"></span>
+          <button type="button" id="teCancel" class="btn">キャンセル</button>
+          <button type="submit" id="teSave" class="btn btn-primary">保存</button>
+        </div>
+      </form>
     </section>
 
     <!-- ========== 日報画面 ========== -->
@@ -697,6 +891,7 @@ main { padding: 12px; }
     <section id="screen-menu" class="screen screen-narrow" aria-labelledby="menuHeading" hidden>
       <h1 id="menuHeading" class="screen-title">設定</h1>
       <ul class="menu-list">
+        <li><button type="button" class="menu-item" data-go="notify"><span class="menu-icon" aria-hidden="true">🔔</span><span class="menu-text"><span class="menu-name">やること・お知らせ</span><span class="menu-desc">前日・当日の朝のお知らせ時刻、端末の通知と音</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
         <li><button type="button" class="menu-item" data-go="buttons"><span class="menu-icon" aria-hidden="true">▦</span><span class="menu-text"><span class="menu-name">作業ボタン</span><span class="menu-desc">作業名の変更・追加・並べ替え</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
         <li><button type="button" class="menu-item" data-go="master"><span class="menu-icon" aria-hidden="true">👥</span><span class="menu-text"><span class="menu-name">顧客・案件<span id="menuManualBadge" class="menu-badge" hidden></span></span><span class="menu-desc">マスタの登録・編集、手入力された名前の整理</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
         <li><button type="button" class="menu-item" data-go="file"><span class="menu-icon" aria-hidden="true">💾</span><span class="menu-text"><span class="menu-name">データファイル</span><span id="menuFileDesc" class="menu-desc"></span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
@@ -818,6 +1013,39 @@ main { padding: 12px; }
       </section>
     </section>
 
+    <!-- ========== 設定 > やること・お知らせ ========== -->
+    <section id="screen-notify" class="screen screen-narrow" aria-labelledby="notifyHeading" hidden>
+      <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
+      <h1 id="notifyHeading" class="screen-title">やること・お知らせ</h1>
+      <section class="card" aria-labelledby="notifyTimeHeading">
+        <h2 id="notifyTimeHeading" class="section-title">お知らせの時刻</h2>
+        <div class="g2">
+          <div class="field">
+            <label for="setPrevTime">「前日」のお知らせ</label>
+            <input type="time" id="setPrevTime">
+          </div>
+          <div class="field">
+            <label for="setMorningTime">「当日の朝」のお知らせ</label>
+            <input type="time" id="setMorningTime">
+          </div>
+        </div>
+        <p class="note">やることの「お知らせ」で「前日」「当日の朝」を選んだときに、この時刻にお知らせします。</p>
+      </section>
+      <section class="card" aria-labelledby="notifyDevHeading">
+        <h2 id="notifyDevHeading" class="section-title">端末の通知と音</h2>
+        <p id="notifPermText" class="note"></p>
+        <div class="stack">
+          <button type="button" id="notifAllow" class="btn">端末の通知を許可する</button>
+          <label class="check-label"><input type="checkbox" id="setSound"> お知らせのときに音を鳴らす</label>
+          <button type="button" id="notifTest" class="btn">テストのお知らせを出す</button>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="notifyHowHeading">
+        <h2 id="notifyHowHeading" class="section-title">しくみ</h2>
+        <p class="note">お知らせは、このツールを開いている間に届きます。パソコンでは別のタブを見ていても届きます。Android でツールを閉じていたり、裏に回していたりすると、届かないことがあります。</p>
+      </section>
+    </section>
+
     <!-- ========== 設定 > 書き出し・バックアップ ========== -->
     <section id="screen-export" class="screen screen-narrow" aria-labelledby="exportHeading" hidden>
       <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
@@ -867,7 +1095,7 @@ main { padding: 12px; }
  * ===================================================================== */
 
 const STORAGE_KEY = 'sagyokanri:data';
-const DATA_VERSION = 2;
+const DATA_VERSION = 3;
 const DEFAULT_CATEGORY_NAMES = ['電話対応', '資料作成', 'プログラム修正', '会議', '顧客訪問', 'その他'];
 const MAX_VISIBLE_BUTTONS = 8;   // これ以下ならすべてボタン表示
 const BUTTONS_WITH_OTHERS = 7;   // 9個以上のときにボタン表示する数
@@ -998,9 +1226,12 @@ function defaultState() {
     projects: [],
     records: [],
     draft: { customer: '', project: '', memo: '' },
+    todos: [],
+    settings: { ...DEFAULT_SETTINGS },
     savedAt: 0,
   };
 }
+const DEFAULT_SETTINGS = { prevDayTime: '17:00', morningTime: '08:30', sound: true };
 
 /**
  * 古い版のデータを最新の形に変換する。
@@ -1011,6 +1242,8 @@ function migrate(raw) {
   const d = JSON.parse(JSON.stringify(raw));
   // version 1 → 2：最終保存日時（データファイルとの新旧比較に使う）を追加
   if (d.version === 1) { d.savedAt = 0; d.version = 2; }
+  // version 2 → 3：やること（todos）と設定（settings）を追加
+  if (d.version === 2) { d.todos = []; d.settings = { ...DEFAULT_SETTINGS }; d.version = 3; }
   // 省略された項目を補う
   const str = (v) => (typeof v === 'string' ? v : '');
   d.categories = (d.categories || []).map((c) => ({ id: c.id, name: str(c.name), deleted: !!c.deleted }));
@@ -1025,7 +1258,33 @@ function migrate(raw) {
     customer: str(r.customer),
     project: str(r.project),
     memo: str(r.memo),
+    todoId: typeof r.todoId === 'string' ? r.todoId : null,
   }));
+  const hm = (v, def) => (typeof v === 'string' && /^\d{2}:\d{2}$/.test(v) ? v : def);
+  d.todos = (Array.isArray(d.todos) ? d.todos : []).map((t) => ({
+    id: t.id,
+    title: str(t.title),
+    date: t.date,
+    time: hm(t.time, ''),
+    priority: !!t.priority,
+    notify: Array.isArray(t.notify) ? t.notify.filter((k) => typeof k === 'string') : [],
+    categoryId: typeof t.categoryId === 'string' ? t.categoryId : null,
+    customer: str(t.customer),
+    project: str(t.project),
+    memo: str(t.memo),
+    done: !!t.done,
+    doneAt: Number.isFinite(t.doneAt) ? t.doneAt : null,
+    createdAt: Number.isFinite(t.createdAt) ? t.createdAt : 0,
+    carriedFrom: typeof t.carriedFrom === 'string' ? t.carriedFrom : null,
+    notified: Array.isArray(t.notified) ? t.notified.filter((k) => typeof k === 'string') : [],
+    snoozeAt: Number.isFinite(t.snoozeAt) ? t.snoozeAt : null,
+  }));
+  const st = d.settings && typeof d.settings === 'object' ? d.settings : {};
+  d.settings = {
+    prevDayTime: hm(st.prevDayTime, DEFAULT_SETTINGS.prevDayTime),
+    morningTime: hm(st.morningTime, DEFAULT_SETTINGS.morningTime),
+    sound: typeof st.sound === 'boolean' ? st.sound : DEFAULT_SETTINGS.sound,
+  };
   d.draft = { customer: str(d.draft && d.draft.customer), project: str(d.draft && d.draft.project), memo: str(d.draft && d.draft.memo) };
   d.savedAt = Number.isFinite(d.savedAt) ? d.savedAt : 0;
   return d;
@@ -1061,6 +1320,10 @@ function validateData(d) {
     if (r.type !== 'break' && !catIds.has(r.categoryId)) return '記録の作業（カテゴリ）が見つかりません。';
   }
   if (running > 1) return '計測中の記録が複数あります。';
+  if (!Array.isArray(d.todos)) return '「todos」がありません。';
+  for (const t of d.todos) {
+    if (!t || !isStr(t.id) || typeof t.title !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(t.date)) return 'やることのデータが正しくありません。';
+  }
   if (!d.categories.some((c) => !c.deleted)) return '作業（カテゴリ）が1つもありません。';
   return null;
 }
@@ -1234,7 +1497,7 @@ function startWork(categoryId, fields) {
   if (run) run.end = now;
   state.records.push({
     id: uid(), start: now, end: null, type: 'work', categoryId,
-    customer: f.customer || '', project: f.project || '', memo: f.memo || '',
+    customer: f.customer || '', project: f.project || '', memo: f.memo || '', todoId: f.todoId || null,
   });
   state.draft = { customer: '', project: '', memo: '' };
   save();
@@ -1250,7 +1513,8 @@ function startBreak() {
   save();
   renderAll();
 }
-function endWork() {
+async function endWork() {
+  if (!(await reviewTodosBeforeEnd())) return; // 未完了のやることの扱いを確認
   const run = getRunning();
   if (run) { run.end = Date.now(); save(); }
   reportDate = todayKey();
@@ -2003,18 +2267,18 @@ function createCombo({ kind, id, value = '', fk, label, getCustomer, onInput, on
 /* =====================================================================
  * 画面切り替え・再描画
  * ===================================================================== */
-const SCREENS = ['record', 'report', 'menu', 'buttons', 'master', 'file', 'export'];
-const SETTING_SCREENS = ['menu', 'buttons', 'master', 'file', 'export'];
+const SCREENS = ['record', 'todo', 'todoedit', 'report', 'menu', 'buttons', 'master', 'file', 'export', 'notify'];
+const SETTING_SCREENS = ['menu', 'buttons', 'master', 'file', 'export', 'notify'];
 const SCREEN_ALIASES = { settings: 'buttons' }; // 旧URLの互換
 let currentScreen = 'record';
 let reportDate = todayKey();
 
 function showScreen(name) {
   name = SCREEN_ALIASES[name] || name;
-  if (!SCREENS.includes(name)) name = 'record';
+  if (!SCREENS.includes(name) || (name === 'todoedit' && !teState)) name = name === 'todoedit' ? 'todo' : 'record';
   currentScreen = name;
   for (const s of SCREENS) $(`#screen-${s}`).hidden = s !== name;
-  const tabOf = SETTING_SCREENS.includes(name) ? 'menu' : name;
+  const tabOf = SETTING_SCREENS.includes(name) ? 'menu' : name === 'todoedit' ? 'todo' : name;
   document.querySelectorAll('.tab').forEach((t) => {
     if (t.dataset.screen === tabOf) t.setAttribute('aria-current', 'page');
     else t.removeAttribute('aria-current');
@@ -2044,6 +2308,11 @@ function withFocusRestore(fn) {
 function renderAll() {
   withFocusRestore(() => {
     renderRecord();
+    renderTodoOnRecord();
+    renderTodoBadge();
+    renderAlerts();
+    if (currentScreen === 'todo') renderTodo();
+    if (currentScreen === 'notify') renderNotifySettings();
     if (currentScreen === 'report') renderReport();
     if (currentScreen === 'master') renderMaster();
     if (currentScreen === 'buttons') renderSettings();
@@ -3159,11 +3428,808 @@ function initSettingsScreen() {
 /* =====================================================================
  * 起動
  * ===================================================================== */
+
+/* =====================================================================
+ * やること（今日・これから・完了）とお知らせ
+ * ===================================================================== */
+const NOTIFY_OPTIONS = [
+  { key: 'at', label: () => '時刻', needTime: true, before: 0 },
+  { key: '5', label: () => '5分前', needTime: true, before: 5 },
+  { key: '15', label: () => '15分前', needTime: true, before: 15 },
+  { key: '60', label: () => '1時間前', needTime: true, before: 60 },
+  { key: 'prev', label: () => `前日 ${state.settings.prevDayTime}` },
+  { key: 'morning', label: () => `当日の朝 ${state.settings.morningTime}` },
+];
+const ALERT_WINDOW = 6 * 3600000; // 開いていなかった間のお知らせは6時間以内のものだけ出す
+const UI_KEY = 'sagyokanri:ui';     // 端末ごとの表示の状態（朝のまとめを表示した日など）
+
+let todoView = 'today';
+let calMode = 'week';
+let calAnchor = null;     // 週表示の先頭日・月表示の月（YYYY-MM-DD）
+let calSelected = null;   // 「これから」で選んだ日
+let showDoneToday = false;
+let activeAlerts = [];
+let lastMinute = -1;
+
+function loadUi() { try { return JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (_) { return {}; } }
+function saveUi(u) { try { localStorage.setItem(UI_KEY, JSON.stringify(u)); } catch (_) { /* 表示用なので無視 */ } }
+
+const todoById = (id) => state.todos.find((t) => t.id === id) || null;
+const todoDue = (t) => (t.time ? combine(t.date, t.time) : null);
+function fmtMD(key) {
+  const d = keyToDate(key);
+  return `${d.getMonth() + 1}/${d.getDate()}（${WEEK[d.getDay()]}）`;
+}
+function relDay(key) {
+  const t = todayKey();
+  if (key === t) return '今日';
+  if (key === shiftKey(t, 1)) return `明日 ${fmtMD(key)}`;
+  if (key === shiftKey(t, -1)) return `昨日 ${fmtMD(key)}`;
+  return fmtMD(key);
+}
+function sortTodos(list) {
+  return list.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+    || ((a.time || '99:99') < (b.time || '99:99') ? -1 : (a.time || '99:99') > (b.time || '99:99') ? 1 : 0)
+    || (b.priority ? 1 : 0) - (a.priority ? 1 : 0)
+    || a.createdAt - b.createdAt);
+}
+/** 今日の一覧に出すもの（今日の分と、過去の未完了＝持ち越し） */
+function todayTodos() {
+  const k = todayKey();
+  return state.todos.filter((t) => t.date === k || (t.date < k && !t.done));
+}
+const isCarried = (t) => !t.done && t.date < todayKey();
+const isOverdue = (t, now = Date.now()) => !t.done && !!t.time && t.date <= todayKey() && todoDue(t) < now;
+function runningTodoId() {
+  const r = getRunning();
+  return r && r.type === 'work' ? r.todoId || null : null;
+}
+function todoMinutes(t) {
+  return state.records.filter((r) => r.todoId === t.id).reduce((s, r) => s + recordMinutes(r), 0);
+}
+function overdueText(t, now = Date.now()) {
+  const m = Math.floor((now - todoDue(t)) / 60000);
+  return m < 60 ? `${m}分過ぎ` : `${Math.floor(m / 60)}時間過ぎ`;
+}
+function todoWho(t) {
+  const c = t.categoryId ? categoryById(t.categoryId) : null;
+  const who = [t.customer, t.project].filter(Boolean).join('／');
+  return [c ? c.name : '', who].filter(Boolean).join('・');
+}
+
+/** お知らせの時刻の一覧 */
+function noticeTimes(t) {
+  const out = [];
+  for (const k of t.notify || []) {
+    const o = NOTIFY_OPTIONS.find((x) => x.key === k);
+    if (!o) continue;
+    let at = null;
+    if (o.needTime) { if (t.time) at = combine(t.date, t.time) - o.before * 60000; }
+    else if (k === 'prev') at = combine(shiftKey(t.date, -1), state.settings.prevDayTime);
+    else if (k === 'morning') at = combine(t.date, state.settings.morningTime);
+    if (at != null) out.push({ key: k, at });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+function nextNoticeText(t, now = Date.now()) {
+  const n = noticeTimes(t).find((x) => x.at > now);
+  if (!n) return '';
+  return `🔔 ${dateKey(n.at) === todayKey() ? '' : `${fmtMD(dateKey(n.at))} `}${fmtHM(n.at)}`;
+}
+
+/* ----- 操作 ----- */
+function addTodo(fields) {
+  const t = {
+    id: uid(), title: fields.title.trim(), date: fields.date, time: fields.time || '',
+    priority: !!fields.priority, notify: fields.notify || [], categoryId: fields.categoryId || null,
+    customer: fields.customer || '', project: fields.project || '', memo: fields.memo || '',
+    done: false, doneAt: null, createdAt: Date.now(), carriedFrom: null, notified: [], snoozeAt: null,
+  };
+  state.todos.push(t);
+  save();
+  checkTodoAlerts();
+  return t;
+}
+function toggleTodoDone(t) {
+  t.done = !t.done;
+  t.doneAt = t.done ? Date.now() : null;
+  activeAlerts = activeAlerts.filter((a) => !(t.done && a.todoId === t.id));
+  save();
+  renderAll();
+}
+async function chooseCategory(t) {
+  const wrap = el('div');
+  const lab = el('label', null, `「${t.title}」のカテゴリ`);
+  lab.htmlFor = 'chooseCat';
+  const sel = el('select');
+  sel.id = 'chooseCat';
+  for (const c of activeCategories()) { const o = el('option', null, c.name); o.value = c.id; sel.append(o); }
+  wrap.append(lab, sel);
+  const ok = await openDialog({ title: '作業の開始', content: wrap, cancelValue: false, buttons: [{ label: 'キャンセル', value: false }, { label: '開始', value: true, primary: true }] });
+  return ok ? sel.value : null;
+}
+async function startTodo(t) {
+  if (runningTodoId() === t.id) return;
+  let cat = t.categoryId;
+  const c = cat ? categoryById(cat) : null;
+  if (!c || c.deleted) {
+    cat = await chooseCategory(t);
+    if (!cat) return;
+    t.categoryId = cat; // 次からはこのカテゴリで開始
+  }
+  startWork(cat, { customer: t.customer, project: t.project, memo: t.title, todoId: t.id });
+}
+
+/* ----- お知らせ ----- */
+let audioCtx = null;
+function unlockAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (_) { /* 音なしで続行 */ }
+}
+function playBeep() {
+  if (!state.settings.sound) return;
+  try {
+    unlockAudio();
+    const t0 = audioCtx.currentTime;
+    [0, 0.3].forEach((d) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, t0 + d);
+      g.gain.exponentialRampToValueAtTime(0.3, t0 + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.25);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0 + d);
+      o.stop(t0 + d + 0.27);
+    });
+  } catch (_) { /* 音なしで続行 */ }
+}
+async function systemNotify(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  try {
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) { await reg.showNotification(title, { body, tag, renotify: true, icon: 'icons/icon-192.png' }); return true; }
+    }
+  } catch (_) { /* 下で試す */ }
+  try {
+    const n = new Notification(title, { body, tag });
+    n.onclick = () => { window.focus(); n.close(); };
+    return true;
+  } catch (_) { return false; }
+}
+function alertTexts(t, kind) {
+  const when = t.time ? `${t.time} ` : '';
+  let title;
+  if (kind === 'prev') title = `${relDay(t.date).startsWith('明日') ? '明日' : fmtMD(t.date)} ${when}「${t.title}」`;
+  else if (kind === 'morning') title = `今日のやること：${when}「${t.title}」`;
+  else if (kind === 'at') title = `${t.time}「${t.title}」の時刻です`;
+  else if (kind === 'snooze') title = `「${t.title}」${t.time ? `（${t.time}）` : ''}`;
+  else title = `まもなく「${t.title}」（${t.time}）`;
+  const body = [todoWho(t), t.memo].filter(Boolean).join('\n');
+  return { title, body };
+}
+function fireAlert(t, kind) {
+  const { title, body } = alertTexts(t, kind);
+  activeAlerts = activeAlerts.filter((a) => a.todoId !== t.id);
+  activeAlerts.push({ id: uid(), todoId: t.id, title, body });
+  systemNotify(`🔔 ${title}`, body, t.id);
+  playBeep();
+}
+/** お知らせの時刻になったものを出す（15秒ごと・画面に戻ったときに実行） */
+function checkTodoAlerts(now = Date.now()) {
+  let changed = false;
+  for (const t of state.todos) {
+    if (t.done) continue;
+    const list = noticeTimes(t);
+    if (t.snoozeAt) list.push({ key: 'snooze', at: t.snoozeAt });
+    for (const n of list) {
+      if (n.at > now || now - n.at > ALERT_WINDOW) continue;
+      const key = `${n.key}@${n.at}`;
+      if ((t.notified || []).includes(key)) continue;
+      t.notified = [...(t.notified || []), key].slice(-20);
+      if (n.key === 'snooze') t.snoozeAt = null;
+      fireAlert(t, n.key);
+      changed = true;
+    }
+  }
+  if (changed) { save(); renderAll(); }
+  // 分が変わったら「期限切れ」などの表示を更新（入力中は再描画しない）
+  const minute = Math.floor(now / 60000);
+  if (minute !== lastMinute) {
+    lastMinute = minute;
+    const a = document.activeElement;
+    const typing = a && ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName);
+    if (!changed && !typing && ['record', 'todo'].includes(currentScreen)) renderAll();
+  }
+}
+function renderAlerts() {
+  const area = $('#alertArea');
+  area.innerHTML = '';
+  activeAlerts = activeAlerts.filter((a) => { const t = todoById(a.todoId); return a.test || (t && !t.done); });
+  for (const a of activeAlerts) {
+    const t = todoById(a.todoId);
+    const box = el('div', 'alert-item');
+    box.setAttribute('role', 'alert');
+    box.append(el('p', 'alert-text', `🔔 ${a.title}`));
+    if (a.body) box.append(el('p', 'alert-sub', a.body));
+    const acts = el('div', 'alert-actions');
+    const dismiss = () => { activeAlerts = activeAlerts.filter((x) => x !== a); renderAlerts(); };
+    const canStart = t && t.date <= todayKey();
+    const start = button('▶ 開始', () => { dismiss(); startTodo(t); }, 'btn btn-small btn-primary');
+    start.hidden = !canStart; // 明日以降の予定（前日のお知らせなど）は開始ボタンを出さない
+    start.dataset.fk = `alert-start-${a.id}`;
+    const later = button('10分後', () => {
+      if (t) { t.snoozeAt = Date.now() + 10 * 60000; save(); }
+      dismiss();
+    }, 'btn btn-small');
+    later.disabled = !t;
+    later.dataset.fk = `alert-later-${a.id}`;
+    const close = button('閉じる', dismiss, 'btn btn-small');
+    close.dataset.fk = `alert-close-${a.id}`;
+    acts.append(start, later, close);
+    box.append(acts);
+    area.append(box);
+  }
+}
+
+/* ----- 記録画面：朝のまとめと次のやること ----- */
+function nextTodo(now = Date.now()) {
+  const run = runningTodoId();
+  const list = todayTodos().filter((t) => !t.done && t.id !== run);
+  const k = todayKey();
+  const upcoming = sortTodos(list.filter((t) => t.time && t.date === k && todoDue(t) >= now));
+  if (upcoming.length) return upcoming[0];
+  const untimed = list.filter((t) => !t.time).sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0) || a.createdAt - b.createdAt);
+  if (untimed.length) return untimed[0];
+  return sortTodos(list)[0] || null;
+}
+function renderTodoOnRecord() {
+  const now = Date.now();
+  const pending = todayTodos().filter((t) => !t.done);
+  // 朝のまとめ（その日に初めて開いたとき）
+  const mb = $('#morningBox');
+  mb.innerHTML = '';
+  const ui = loadUi();
+  if (pending.length && ui.summaryDate !== todayKey()) {
+    const box = el('section', 'morning');
+    box.setAttribute('aria-label', '今日のやること');
+    box.append(el('p', 'morning-title', `☀ 今日のやること ${pending.length}件`));
+    const ul = el('ul');
+    for (const t of sortTodos(pending).slice(0, 5)) {
+      const li = el('li');
+      li.append(document.createTextNode(`${t.time ? `${t.time} ` : ''}${t.title}`));
+      if (t.priority) li.append(el('span', 'tag-pri', '優先'));
+      if (isCarried(t)) li.append(el('span', 'over', ' 持ち越し'));
+      ul.append(li);
+    }
+    if (pending.length > 5) ul.append(el('li', null, `ほか${pending.length - 5}件`));
+    box.append(ul);
+    const acts = el('div', 'morning-actions');
+    const markSeen = () => saveUi({ ...loadUi(), summaryDate: todayKey() });
+    const close = button('閉じる', () => { markSeen(); renderAll(); }, 'btn btn-small');
+    close.dataset.fk = 'morning-close';
+    const see = button('やることを見る', () => { markSeen(); todoView = 'today'; showScreen('todo'); }, 'btn btn-small btn-primary');
+    see.dataset.fk = 'morning-see';
+    acts.append(close, see);
+    box.append(acts);
+    mb.append(box);
+  }
+  // 次のやること
+  const nb = $('#nextTodo');
+  nb.innerHTML = '';
+  const t = nextTodo(now);
+  if (!t) {
+    const empty = el('div', 'next-empty');
+    empty.append(el('span', null, pending.length ? '' : '今日のやることはありません'));
+    const add = button('＋ やることを追加', () => { todoView = 'today'; showScreen('todo'); $('#todoQuickTitle').focus(); }, 'link-btn');
+    add.dataset.fk = 'next-add';
+    empty.append(add);
+    nb.append(empty);
+    return;
+  }
+  const box = el('section', 'next-todo');
+  box.setAttribute('aria-label', '次のやること');
+  const head = el('div', 'next-head');
+  head.append(el('span', 'next-label', '次のやること'));
+  const all = button(`未完了${pending.length}件 ›`, () => { todoView = 'today'; showScreen('todo'); }, 'link-btn');
+  all.dataset.fk = 'next-all';
+  head.append(all);
+  box.append(head);
+  const title = el('div', 'next-title');
+  title.append(document.createTextNode(`${t.time ? `${t.time}　` : ''}${t.title}`));
+  if (t.priority) title.append(el('span', 'tag-pri', '優先'));
+  box.append(title);
+  const meta = [todoWho(t), nextNoticeText(t, now)].filter(Boolean).join('　');
+  if (meta) box.append(el('div', 'next-meta', meta));
+  if (isOverdue(t, now)) box.append(el('div', 'next-meta over', `⚠ 期限切れ（${overdueText(t, now)}）`));
+  else if (isCarried(t)) box.append(el('div', 'next-meta over', `⚠ ${fmtMD(t.date)}からの持ち越し`));
+  const others = pending.filter((x) => x !== t && (isOverdue(x, now) || isCarried(x)));
+  if (others.length) box.append(el('div', 'next-meta over', `⚠ 期限切れ・持ち越しがほかに${others.length}件あります（${others[0].time ? `${others[0].time} ` : ''}${others[0].title}）`));
+  const acts = el('div', 'next-actions');
+  const start = button('▶ 開始', () => startTodo(t), 'btn btn-small btn-primary');
+  start.dataset.fk = 'next-start';
+  const done = button('✓ 完了', () => toggleTodoDone(t), 'btn btn-small');
+  done.dataset.fk = 'next-done';
+  acts.append(start, done);
+  box.append(acts);
+  nb.append(box);
+}
+function renderTodoBadge() {
+  const n = todayTodos().filter((t) => !t.done).length;
+  const b = $('#todoBadge');
+  b.hidden = n === 0;
+  b.textContent = String(n);
+  $('.tab[data-screen="todo"]').setAttribute('aria-label', n ? `やること（未完了${n}件）` : 'やること');
+}
+
+/* ----- やること画面 ----- */
+function buildTodoRow(t, mode, now = Date.now()) {
+  const li = el('li', `todo-row${t.done ? ' is-done' : ''}${runningTodoId() === t.id ? ' is-running' : ''}`);
+  const chk = el('button', 'todo-chk');
+  chk.type = 'button';
+  chk.setAttribute('role', 'checkbox');
+  chk.setAttribute('aria-checked', String(t.done));
+  chk.setAttribute('aria-label', `「${t.title}」を完了にする`);
+  chk.dataset.fk = `todo-chk-${t.id}`;
+  chk.append(el('span', null, t.done ? '✓' : ''));
+  chk.addEventListener('click', () => toggleTodoDone(t));
+  const body = el('button', 'todo-body');
+  body.type = 'button';
+  body.dataset.fk = `todo-body-${t.id}`;
+  body.setAttribute('aria-label', `「${t.title}」を編集`);
+  body.addEventListener('click', () => openTodoEdit(t.id));
+  const title = el('div', 'todo-title');
+  if (t.time) title.append(el('span', 'tm', mode === 'future' && t.date > shiftKey(todayKey(), 60) ? `${fmtMD(t.date)} ${t.time}` : t.time));
+  title.append(el('span', null, t.title));
+  if (t.priority) title.append(el('span', 'tag-pri', '優先'));
+  body.append(title);
+  const meta = el('div', 'todo-meta');
+  const add = (text, cls) => { if (text) meta.append(el('span', cls, text)); };
+  if (isCarried(t)) add(`⚠ ${fmtMD(t.date)}からの持ち越し`, 'over');
+  add(todoWho(t));
+  if (isOverdue(t, now)) add(`⚠ 期限切れ（${overdueText(t, now)}）`, 'over');
+  if (!t.done) add(nextNoticeText(t, now));
+  const mins = todoMinutes(t);
+  if (mins) add(`⏱ ${fmtDuration(mins)}`);
+  if (t.done && t.doneAt) add(`完了 ${dateKey(t.doneAt) === todayKey() ? '' : fmtMD(dateKey(t.doneAt))}${fmtHM(t.doneAt)}`);
+  if (!t.time && !meta.childElementCount && mode !== 'done') add('時刻なし');
+  body.append(meta);
+  li.append(chk, body);
+  if (!t.done && t.date <= todayKey()) {
+    const running = runningTodoId() === t.id;
+    const play = button(running ? '計測中' : '▶', () => startTodo(t), 'btn todo-play');
+    play.setAttribute('aria-pressed', String(running));
+    play.setAttribute('aria-label', running ? `「${t.title}」を計測中` : `「${t.title}」を開始`);
+    play.dataset.fk = `todo-play-${t.id}`;
+    li.append(play);
+  } else {
+    li.append(el('span'));
+  }
+  return li;
+}
+function todoGroup(container, title, list, mode) {
+  const h = el('h2', 'todo-group');
+  h.append(document.createTextNode(title), el('span', null, `${list.length}件`));
+  container.append(h);
+  const ul = el('ul', 'todo-list');
+  for (const t of list) ul.append(buildTodoRow(t, mode));
+  container.append(ul);
+}
+function quickAddDate() {
+  if (todoView === 'future') return calSelected && calSelected > todayKey() ? calSelected : shiftKey(todayKey(), 1);
+  return todayKey();
+}
+function weekStart(key) { return key; }
+function monthStart(key) { return `${key.slice(0, 7)}-01`; }
+function renderTodoCalendar() {
+  const box = $('#todoCal');
+  box.innerHTML = '';
+  if (todoView !== 'future') return;
+  const today = todayKey();
+  if (!calAnchor) calAnchor = today;
+  const counts = new Map();
+  for (const t of state.todos) if (!t.done) counts.set(t.date, (counts.get(t.date) || 0) + 1);
+  for (const t of todayTodos()) if (!t.done && t.date < today) counts.set(today, (counts.get(today) || 0) + 1);
+
+  const mode = el('div', 'cal-mode');
+  mode.setAttribute('role', 'group');
+  mode.setAttribute('aria-label', 'カレンダーの表示');
+  for (const [m, label] of [['week', '週'], ['month', '月']]) {
+    const b = button(label, () => { calMode = m; calAnchor = m === 'month' ? monthStart(calSelected || today) : (calSelected && calSelected >= today ? calSelected : today); renderAll(); }, 'btn btn-small');
+    b.setAttribute('aria-pressed', String(calMode === m));
+    b.dataset.fk = `cal-mode-${m}`;
+    mode.append(b);
+  }
+  box.append(mode);
+
+  const head = el('div', 'cal-head');
+  let days = [];
+  let title;
+  if (calMode === 'week') {
+    const s = weekStart(calAnchor);
+    for (let i = 0; i < 7; i++) days.push(shiftKey(s, i));
+    title = `${fmtMD(days[0]).replace(/（.）/, '')} 〜 ${fmtMD(days[6]).replace(/（.）/, '')}`;
+  } else {
+    const s = monthStart(calAnchor);
+    const d0 = keyToDate(s);
+    title = `${d0.getFullYear()}年${d0.getMonth() + 1}月`;
+    const lead = d0.getDay();
+    for (let i = 0; i < lead; i++) days.push(null);
+    for (let k = s; k.slice(0, 7) === s.slice(0, 7); k = shiftKey(k, 1)) days.push(k);
+  }
+  const prev = button('‹', () => {
+    calAnchor = calMode === 'week' ? shiftKey(calAnchor, -7) : monthStart(shiftKey(monthStart(calAnchor), -1));
+    renderAll();
+  }, 'btn btn-icon');
+  prev.setAttribute('aria-label', calMode === 'week' ? '前の週' : '前の月');
+  prev.dataset.fk = 'cal-prev';
+  const next = button('›', () => {
+    calAnchor = calMode === 'week' ? shiftKey(calAnchor, 7) : monthStart(shiftKey(monthStart(calAnchor), 32));
+    renderAll();
+  }, 'btn btn-icon');
+  next.setAttribute('aria-label', calMode === 'week' ? '次の週' : '次の月');
+  next.dataset.fk = 'cal-next';
+  head.append(prev, el('div', 'cal-title', title), next);
+  box.append(head);
+
+  const grid = el('div', 'cal-grid');
+  if (calMode === 'month') for (const w of WEEK) grid.append(el('div', 'cal-wd', w));
+  for (const k of days) {
+    if (!k) { grid.append(el('div', 'cal-blank')); continue; }
+    const d = keyToDate(k);
+    const n = counts.get(k) || 0;
+    const b = el('button', `cal-day${k === today ? ' is-today' : ''}${k < today ? ' is-past' : ''}${d.getDay() === 0 || d.getDay() === 6 ? ' is-holiday' : ''}`);
+    b.type = 'button';
+    b.dataset.fk = `cal-${k}`;
+    b.setAttribute('aria-pressed', String(calSelected === k));
+    b.setAttribute('aria-label', `${fmtMD(k)}${k === today ? '（今日）' : ''} やること${n}件`);
+    if (calMode === 'week') b.append(el('span', 'w', WEEK[d.getDay()]));
+    b.append(el('span', 'n', String(d.getDate())), el('span', 'c', n ? String(n) : ''));
+    b.addEventListener('click', () => {
+      if (k === today) { todoView = 'today'; calSelected = null; }
+      else calSelected = calSelected === k ? null : k;
+      renderAll();
+    });
+    grid.append(b);
+  }
+  box.append(grid);
+}
+function renderTodo() {
+  const now = Date.now();
+  const today = todayKey();
+  document.querySelectorAll('.vseg-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === todoView)));
+  const pendingToday = todayTodos().filter((t) => !t.done);
+  const future = state.todos.filter((t) => !t.done && t.date > today);
+  $('#todoCntToday').textContent = String(pendingToday.length);
+  $('#todoCntFuture').textContent = String(future.length);
+  $('#todoQuickForm').hidden = todoView === 'done';
+  $('#todoQuickDate').textContent = `追加先：${todoView === 'today' ? '今日' : relDay(quickAddDate())}`;
+  renderTodoCalendar();
+
+  const box = $('#todoList');
+  box.innerHTML = '';
+  if (todoView === 'today') {
+    const carried = sortTodos(pendingToday.filter((t) => t.date < today));
+    const list = sortTodos(state.todos.filter((t) => t.date === today && !t.done));
+    const doneToday = state.todos.filter((t) => t.done && (t.date === today || (t.doneAt && dateKey(t.doneAt) === today)))
+      .sort((a, b) => b.doneAt - a.doneAt);
+    if (carried.length) todoGroup(box, '持ち越し', carried, 'today');
+    if (list.length) todoGroup(box, '今日', list, 'today');
+    if (!carried.length && !list.length) box.append(el('p', 'todo-empty', doneToday.length ? '✓ 今日のやることはすべて完了しました。' : '今日のやることはまだありません。上の欄から追加できます。'));
+    if (doneToday.length) {
+      const fold = button(`完了したもの（${doneToday.length}件）${showDoneToday ? '　隠す ▴' : '　表示 ▾'}`, () => { showDoneToday = !showDoneToday; renderAll(); }, 'btn todo-fold');
+      fold.setAttribute('aria-expanded', String(showDoneToday));
+      fold.dataset.fk = 'todo-fold';
+      box.append(fold);
+      if (showDoneToday) {
+        const ul = el('ul', 'todo-list');
+        for (const t of doneToday) ul.append(buildTodoRow(t, 'done', now));
+        box.append(ul);
+      }
+    }
+  } else if (todoView === 'future') {
+    if (calSelected) {
+      const list = sortTodos(state.todos.filter((t) => t.date === calSelected));
+      if (list.length) todoGroup(box, relDay(calSelected), list, 'future');
+      else box.append(el('p', 'todo-empty', `${relDay(calSelected)}のやることはありません。上の欄から追加できます。`));
+      const all = button('これからの予定をすべて表示', () => { calSelected = null; renderAll(); }, 'btn btn-small');
+      all.dataset.fk = 'todo-showall';
+      box.append(all);
+    } else {
+      const byDate = new Map();
+      for (const t of sortTodos(future)) { if (!byDate.has(t.date)) byDate.set(t.date, []); byDate.get(t.date).push(t); }
+      if (!byDate.size) box.append(el('p', 'todo-empty', '明日以降のやることはまだありません。カレンダーで日付を選ぶか、上の欄から追加できます。'));
+      for (const [k, list] of byDate) todoGroup(box, relDay(k), list, 'future');
+    }
+  } else {
+    const from = shiftKey(today, -30);
+    const done = state.todos.filter((t) => t.done && t.doneAt && dateKey(t.doneAt) >= from).sort((a, b) => b.doneAt - a.doneAt);
+    const byDate = new Map();
+    for (const t of done) { const k = dateKey(t.doneAt); if (!byDate.has(k)) byDate.set(k, []); byDate.get(k).push(t); }
+    if (!byDate.size) box.append(el('p', 'todo-empty', '過去30日に完了したやることはありません。'));
+    for (const [k, list] of byDate) todoGroup(box, relDay(k), list, 'done');
+  }
+}
+
+/* ----- 追加・編集 ----- */
+let teState = null; // 編集中の内容
+let teCustCombo;
+let teProjCombo;
+function openTodoEdit(id, defaults = {}) {
+  const t = id ? todoById(id) : null;
+  teState = t
+    ? { id: t.id, title: t.title, date: t.date, time: t.time, priority: t.priority, notify: [...t.notify], categoryId: t.categoryId || '', customer: t.customer, project: t.project, memo: t.memo }
+    : { id: null, title: defaults.title || '', date: defaults.date || todayKey(), time: defaults.time || '', priority: false, notify: defaults.time ? ['5'] : [], categoryId: '', customer: '', project: '', memo: '' };
+  $('#todoEditHeading').textContent = t ? 'やることの編集' : 'やることの追加';
+  $('#teTitle').value = teState.title;
+  $('#teDate').value = teState.date;
+  $('#teTime').value = teState.time;
+  $('#teMemo').value = teState.memo;
+  $('#teDelete').hidden = !t;
+  $('#teError').hidden = true;
+  const sel = $('#teCat');
+  sel.innerHTML = '';
+  const none = el('option', null, '未設定（開始するときに選ぶ）');
+  none.value = '';
+  sel.append(none);
+  for (const c of state.categories) {
+    if (c.deleted && c.id !== teState.categoryId) continue;
+    const o = el('option', null, c.deleted ? `${c.name}（削除済み）` : c.name);
+    o.value = c.id;
+    sel.append(o);
+  }
+  sel.value = teState.categoryId || '';
+  teCustCombo.setValue(teState.customer);
+  teProjCombo.setValue(teState.project);
+  renderTodoEditToggles();
+  showScreen('todoedit');
+  $('#teTitle').focus();
+}
+function renderTodoEditToggles() {
+  const today = todayKey();
+  const chips = $('#teDateChips');
+  chips.innerHTML = '';
+  const d = keyToDate(today);
+  const nextMon = shiftKey(today, ((8 - d.getDay()) % 7) || 7);
+  for (const [label, k] of [['今日', today], ['明日', shiftKey(today, 1)], [`来週月曜（${fmtMD(nextMon).replace(/（.）/, '')}）`, nextMon]]) {
+    const b = button(label, () => { teState.date = k; $('#teDate').value = k; renderTodoEditToggles(); }, 'chip');
+    b.setAttribute('aria-pressed', String(teState.date === k));
+    b.dataset.fk = `te-chip-${label}`;
+    chips.append(b);
+  }
+  const box = $('#teNotify');
+  box.innerHTML = '';
+  for (const o of NOTIFY_OPTIONS) {
+    const b = button(o.label(), () => {
+      teState.notify = teState.notify.includes(o.key) ? teState.notify.filter((x) => x !== o.key) : [...teState.notify, o.key];
+      renderTodoEditToggles();
+    }, 'toggle');
+    const off = o.needTime && !teState.time;
+    b.disabled = off;
+    b.setAttribute('aria-pressed', String(!off && teState.notify.includes(o.key)));
+    b.dataset.fk = `te-notify-${o.key}`;
+    box.append(b);
+  }
+  const noneBtn = button('なし', () => { teState.notify = []; renderTodoEditToggles(); }, 'toggle');
+  noneBtn.setAttribute('aria-pressed', String(!teState.notify.some((k) => { const o = NOTIFY_OPTIONS.find((x) => x.key === k); return o && !(o.needTime && !teState.time); })));
+  noneBtn.dataset.fk = 'te-notify-none';
+  box.append(noneBtn);
+  $('#teNotifyNote').textContent = teState.time ? '' : '「時刻」「5分前」などは、時刻を入れると選べます。';
+  const pri = $('#tePri');
+  pri.innerHTML = '';
+  for (const [label, v] of [['ふつう', false], ['優先', true]]) {
+    const b = button(label, () => { teState.priority = v; renderTodoEditToggles(); }, 'toggle');
+    b.setAttribute('aria-pressed', String(teState.priority === v));
+    b.dataset.fk = `te-pri-${v}`;
+    pri.append(b);
+  }
+}
+function closeTodoEdit(date) {
+  if (date) {
+    if (date === todayKey() || date < todayKey()) todoView = 'today';
+    else { todoView = 'future'; }
+  }
+  showScreen('todo');
+}
+function saveTodoEdit() {
+  const title = $('#teTitle').value.trim();
+  const date = $('#teDate').value;
+  const err = $('#teError');
+  if (!title) { err.textContent = '⚠ 内容を入力してください。'; err.hidden = false; $('#teTitle').focus(); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { err.textContent = '⚠ 日付を選んでください。'; err.hidden = false; $('#teDate').focus(); return; }
+  const time = $('#teTime').value;
+  const notify = teState.notify.filter((k) => { const o = NOTIFY_OPTIONS.find((x) => x.key === k); return o && !(o.needTime && !time); });
+  const fields = {
+    title, date, time, priority: teState.priority, notify, categoryId: $('#teCat').value || null,
+    customer: teCustCombo.input.value.trim(), project: teProjCombo.input.value.trim(), memo: $('#teMemo').value,
+  };
+  if (teState.id) {
+    const t = todoById(teState.id);
+    if (t) {
+      if (t.date !== date) t.carriedFrom = null;
+      Object.assign(t, fields);
+      t.snoozeAt = null;
+      save();
+      checkTodoAlerts();
+    }
+  } else {
+    addTodo(fields);
+  }
+  closeTodoEdit(date);
+}
+async function deleteTodoEdit() {
+  const t = todoById(teState.id);
+  if (!t) return;
+  const ok = await confirmDialog('やることの削除', `「${t.title}」を削除しますか？\n計測した記録は残ります。`, '削除する', true);
+  if (!ok) return;
+  state.todos = state.todos.filter((x) => x !== t);
+  save();
+  closeTodoEdit(t.date);
+}
+
+/* ----- 業務終了時の確認 ----- */
+async function reviewTodosBeforeEnd() {
+  const today = todayKey();
+  const tomorrow = shiftKey(today, 1);
+  const pending = sortTodos(todayTodos().filter((t) => !t.done));
+  const tomorrowList = sortTodos(state.todos.filter((t) => !t.done && t.date === tomorrow));
+  if (!pending.length && !tomorrowList.length) return true;
+  const choice = new Map(pending.map((t) => [t.id, { kind: 'tomorrow', date: shiftKey(tomorrow, 1) }]));
+  const wrap = el('div');
+  if (pending.length) {
+    wrap.append(el('p', 'note', `未完了のやることが${pending.length}件あります。それぞれの扱いを選んでください。`));
+    const ul = el('ul', 'end-list');
+    for (const t of pending) {
+      const li = el('li', 'end-item');
+      li.append(el('div', 'end-item-title', `${t.time ? `${t.time} ` : ''}${t.title}`));
+      const row = el('div', 'toggle-row');
+      row.setAttribute('role', 'group');
+      row.setAttribute('aria-label', `「${t.title}」の扱い`);
+      const dateInput = el('input');
+      dateInput.type = 'date';
+      dateInput.min = tomorrow;
+      dateInput.value = choice.get(t.id).date;
+      dateInput.setAttribute('aria-label', `「${t.title}」を移す日付`);
+      dateInput.hidden = true;
+      dateInput.addEventListener('change', () => { choice.get(t.id).date = dateInput.value; });
+      const btns = [];
+      for (const [kind, label] of [['tomorrow', '明日へ'], ['pick', '日付を選ぶ'], ['done', '完了']]) {
+        const b = button(label, () => {
+          choice.get(t.id).kind = kind;
+          btns.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.kind === kind)));
+          dateInput.hidden = kind !== 'pick';
+          if (kind === 'pick') dateInput.focus();
+        }, 'toggle');
+        b.dataset.kind = kind;
+        b.dataset.fk = `end-${t.id}-${kind}`;
+        b.setAttribute('aria-pressed', String(kind === 'tomorrow'));
+        btns.push(b);
+        row.append(b);
+      }
+      li.append(row, dateInput);
+      ul.append(li);
+    }
+    wrap.append(ul);
+  }
+  if (tomorrowList.length) {
+    wrap.append(el('p', 'end-sub', `明日 ${fmtMD(tomorrow)}の予定　${tomorrowList.length}件`));
+    const ul = el('ul', 'end-tomorrow');
+    for (const t of tomorrowList) {
+      const li = el('li', null, `${t.time ? `${t.time} ` : ''}${t.title}`);
+      if (t.priority) li.append(el('span', 'tag-pri', '優先'));
+      ul.append(li);
+    }
+    wrap.append(ul);
+  }
+  const ok = await openDialog({
+    title: '業務終了の前に', content: wrap, cancelValue: false,
+    buttons: [{ label: '戻る', value: false }, { label: '業務終了', value: true, primary: true }],
+    initialFocus: wrap.querySelector('button'),
+  });
+  if (!ok) return false;
+  for (const t of pending) {
+    const c = choice.get(t.id);
+    if (c.kind === 'done') { t.done = true; t.doneAt = Date.now(); continue; }
+    const to = c.kind === 'pick' && /^\d{4}-\d{2}-\d{2}$/.test(c.date) && c.date > today ? c.date : tomorrow;
+    t.carriedFrom = t.carriedFrom || t.date;
+    t.date = to;
+  }
+  if (pending.length) save();
+  return true;
+}
+
+/* ----- 設定 > やること・お知らせ ----- */
+function renderNotifySettings() {
+  $('#setPrevTime').value = state.settings.prevDayTime;
+  $('#setMorningTime').value = state.settings.morningTime;
+  $('#setSound').checked = !!state.settings.sound;
+  const p = $('#notifPermText');
+  const allow = $('#notifAllow');
+  if (!('Notification' in window)) {
+    p.textContent = 'この環境では端末の通知を使えません。ツールの画面の表示と音でお知らせします。';
+    allow.hidden = true;
+  } else if (Notification.permission === 'granted') {
+    p.textContent = '✓ 端末の通知は許可されています。';
+    allow.hidden = true;
+  } else if (Notification.permission === 'denied') {
+    p.textContent = '⚠ 端末の通知がブロックされています。アドレスバー左のアイコン →「サイトの設定」で「通知」を「許可」にしてください。それまでは画面の表示と音でお知らせします。';
+    allow.hidden = true;
+  } else {
+    p.textContent = '端末の通知はまだ許可されていません。許可すると、ほかの画面を見ているときにも通知が出ます。';
+    allow.hidden = false;
+  }
+}
+function initTodo() {
+  teCustCombo = createCombo({
+    kind: 'customer', id: 'teCust',
+    onCommit: (v, changed) => { if (changed && shouldClearProject(v, teProjCombo.input.value)) teProjCombo.setValue(''); },
+  });
+  teProjCombo = createCombo({
+    kind: 'project', id: 'teProj',
+    getCustomer: () => teCustCombo.input.value,
+    onSetCustomer: (name) => teCustCombo.setValue(name),
+  });
+  $('#teCustSlot').append(teCustCombo);
+  $('#teProjSlot').append(teProjCombo);
+
+  document.querySelectorAll('.vseg-btn').forEach((b) => b.addEventListener('click', () => {
+    todoView = b.dataset.view;
+    if (todoView !== 'future') calSelected = null;
+    renderAll();
+  }));
+  $('#todoQuickForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = $('#todoQuickTitle').value.trim();
+    if (!title) { $('#todoQuickTitle').focus(); return; }
+    const time = $('#todoQuickTime').value;
+    addTodo({ title, date: quickAddDate(), time, notify: time ? ['5'] : [] });
+    $('#todoQuickTitle').value = '';
+    $('#todoQuickTime').value = '';
+    renderAll();
+    $('#todoQuickTitle').focus();
+  });
+  $('#todoDetailBtn').addEventListener('click', () => {
+    openTodoEdit(null, { title: $('#todoQuickTitle').value.trim(), time: $('#todoQuickTime').value, date: quickAddDate() });
+    $('#todoQuickTitle').value = '';
+    $('#todoQuickTime').value = '';
+  });
+  $('#teTime').addEventListener('input', () => { teState.time = $('#teTime').value; renderTodoEditToggles(); });
+  $('#teDate').addEventListener('change', () => { teState.date = $('#teDate').value; renderTodoEditToggles(); });
+  $('#todoEditForm').addEventListener('submit', (e) => { e.preventDefault(); saveTodoEdit(); });
+  $('#teCancel').addEventListener('click', () => closeTodoEdit(teState && teState.date));
+  $('#teBack').addEventListener('click', () => closeTodoEdit(teState && teState.date));
+  $('#teDelete').addEventListener('click', deleteTodoEdit);
+
+  $('#setPrevTime').addEventListener('change', (e) => { if (e.target.value) { state.settings.prevDayTime = e.target.value; save(); } });
+  $('#setMorningTime').addEventListener('change', (e) => { if (e.target.value) { state.settings.morningTime = e.target.value; save(); } });
+  $('#setSound').addEventListener('change', (e) => { state.settings.sound = e.target.checked; save(); });
+  $('#notifAllow').addEventListener('click', async () => {
+    try { await Notification.requestPermission(); } catch (_) { /* 未対応 */ }
+    renderAll();
+  });
+  $('#notifTest').addEventListener('click', () => {
+    unlockAudio();
+    activeAlerts.push({ id: uid(), todoId: null, test: true, title: 'テストのお知らせです', body: 'やることの時刻になると、このように表示します。' });
+    systemNotify('🔔 テストのお知らせです', 'やることの時刻になると、このように通知します。', 'test');
+    playBeep();
+    renderAlerts();
+  });
+  // 音を鳴らせるよう、最初の操作で準備する
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
+  document.addEventListener('keydown', unlockAudio, { once: true });
+  setInterval(() => checkTodoAlerts(), 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkTodoAlerts(); });
+}
+
 function init() {
   initRecordScreen();
   initReportScreen();
   initMasterScreen();
   initSettingsScreen();
+  initTodo();
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => showScreen(t.dataset.screen)));
   document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
     showScreen(b.dataset.go);
@@ -3197,7 +4263,7 @@ function init() {
   showScreen(location.hash.slice(1) || 'record');
   renderFileBar();
   if (storageOk) persistLocal(); // 保存できるかの確認を兼ねる
-  initDataFile().then(() => checkStaleRunning());
+  initDataFile().then(() => { checkStaleRunning(); checkTodoAlerts(); });
 }
 
 init();

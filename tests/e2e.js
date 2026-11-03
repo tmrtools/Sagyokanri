@@ -412,7 +412,7 @@ function check(name, cond, detail = '') {
   const [dj] = await Promise.all([page.waitForEvent('download'), page.click('#jsonBackup')]);
   const jsonPath = await dj.path();
   const backup = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-  check('JSONにバージョン番号', backup.version === 2);
+  check('JSONにバージョン番号', backup.version === 3);
   // データを壊してから復元
   await page.evaluate((k) => localStorage.removeItem(k), KEY);
   await page.reload();
@@ -523,7 +523,7 @@ function check(name, cond, detail = '') {
   check('未設定のときは案内を表示', (await bar()).includes('データファイル未設定'));
   await p2.click('[data-fk="bar-create"]');
   await waitSaved();
-  check('データファイルを作成して保存', fs.existsSync(fpath('data.json')) && readF('data.json').version === 2 && (await fileDesc()) === 'data.json に自動保存中' && (await p2.locator('#fileBar').isHidden()));
+  check('データファイルを作成して保存', fs.existsSync(fpath('data.json')) && readF('data.json').version === 3 && (await fileDesc()) === 'data.json に自動保存中' && (await p2.locator('#fileBar').isHidden()));
   await p2.click('#workGrid .work-btn >> nth=0');
   await p2.fill('#recMemo', 'ファイル保存');
   await p2.waitForTimeout(600);
@@ -621,7 +621,6 @@ function check(name, cond, detail = '') {
   await ctx3.addInitScript(() => {
     delete window.showSaveFilePicker;
     delete window.showOpenFilePicker;
-    if (localStorage.getItem('__noShare')) return;
     // Chrome と同じく、.json は共有できない（.txt はできる）
     navigator.canShare = (d) => !!(d && d.files && d.files.length && d.files.every((f) => /\.txt$/i.test(f.name) && f.type.startsWith('text/plain')));
     navigator.share = async (d) => { for (const f of d.files) await window.__shared(f.name, await f.text()); };
@@ -669,8 +668,8 @@ function check(name, cond, detail = '') {
   await p3.click('#dialog[open] #dialogButtons button >> text=キャンセル');
   check('キャンセルすると端末のデータを残す', (await st3()).records.length === 3);
   // 共有に対応していないときはダウンロード
-  await p3.evaluate(() => localStorage.setItem('__noShare', '1'));
-  await p3.reload();
+  // 共有に対応していないブラウザを再現（再読み込みせずにその場で外す）
+  await p3.evaluate(() => { delete navigator.share; delete navigator.canShare; });
   await goSetting(p3, 'file');
   const [dl3] = await Promise.all([p3.waitForEvent('download'), p3.click('#manualShare')]);
   check('共有できないブラウザではダウンロードする', dl3.suggestedFilename() === '作業記録データ.txt');
@@ -719,6 +718,167 @@ function check(name, cond, detail = '') {
   await goSetting(p5, 'file');
   check('Android ではファイル選択の機能があっても手動モードにする', hasPicker && await p5.locator('#fileManual').isVisible() && await p5.locator('#fileAuto').isHidden());
   await ctx5.close();
+  // ---------------------------------------------------------------
+  console.log('18. やること（今日・これから・お知らせ）');
+  const ctx6 = await browser.newContext({ viewport: { width: 360, height: 900 }, locale: 'ja-JP' });
+  await ctx6.addInitScript(() => {
+    window.__notes = [];
+    class FakeNotification {
+      constructor(title, opt) { window.__notes.push({ title, body: opt && opt.body }); }
+      static requestPermission() { return Promise.resolve('granted'); }
+    }
+    FakeNotification.permission = 'granted';
+    window.Notification = FakeNotification;
+  });
+  const p6 = await ctx6.newPage();
+  p6.on('pageerror', (e) => errors.push(e.message));
+  const st6 = () => p6.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
+  const set6 = async (fn, arg) => { await p6.evaluate(([f, a]) => { new Function('a', f)(a); save(); renderAll(); }, [fn, arg]); };
+  await p6.goto(URL);
+  // 古い版（version 2）のデータを読み込む
+  const v2 = { version: 2, categories: [{ id: 'cat1', name: '電話対応' }, { id: 'cat2', name: '資料作成' }, { id: 'cat3', name: '会議' }], customers: [{ id: 'c1', name: 'A社' }], projects: [{ id: 'p1', customerId: 'c1', name: '新規提案' }], records: [], savedAt: 1 };
+  await p6.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [KEY, v2]);
+  await p6.reload();
+  let t6 = await st6();
+  check('version 2 のデータを version 3 に変換', t6.version === 3 && Array.isArray(t6.todos) && t6.settings.prevDayTime === '17:00');
+  check('やることが無いときはタブに件数を出さない', await p6.locator('#todoBadge').isHidden());
+  // 今日のやることを追加
+  await p6.click('.tab[data-screen="todo"]');
+  await p6.fill('#todoQuickTitle', '議事録の清書');
+  await p6.press('#todoQuickTitle', 'Enter');
+  await p6.fill('#todoQuickTitle', 'A社へ見積書を送付');
+  await p6.click('#todoQuickForm button[type=submit]');
+  t6 = await st6();
+  check('1行で今日のやることを追加', t6.todos.length === 2 && t6.todos.every((t) => t.date === today));
+  check('タブに未完了の件数を表示', (await p6.textContent('#todoBadge')) === '2');
+  check('今日の一覧に表示', (await p6.locator('#todoList .todo-row').count()) === 2);
+  // 記録画面の「次のやること」から開始
+  await p6.click('.tab[data-screen="record"]');
+  check('記録画面に次のやることを表示', (await p6.textContent('#nextTodo')).includes('議事録の清書'));
+  await p6.click('[data-fk="next-start"]');
+  await p6.waitForSelector('#dialog[open]');
+  await p6.selectOption('#chooseCat', 'cat2');
+  await p6.click('#dialog[open] #dialogButtons button >> text=開始');
+  t6 = await st6();
+  const runRec = t6.records.find((r) => r.end === null);
+  const todo1 = t6.todos.find((t) => t.title === '議事録の清書');
+  check('▶ 開始で作業の計測を始める（やることの内容をメモに入れる）', runRec && runRec.todoId === todo1.id && runRec.categoryId === 'cat2' && runRec.memo === '議事録の清書');
+  check('選んだカテゴリをやることに覚える', todo1.categoryId === 'cat2');
+  check('次のやることは計測中以外を表示', (await p6.textContent('#nextTodo')).includes('A社へ見積書を送付'));
+  await p6.click('.tab[data-screen="todo"]');
+  check('一覧で計測中と表示', (await p6.textContent(`[data-fk="todo-play-${todo1.id}"]`)) === '計測中');
+  // 完了にする
+  await p6.click(`[data-fk="todo-chk-${todo1.id}"]`);
+  check('チェックで完了・件数が減る', (await st6()).todos.find((t) => t.id === todo1.id).done && (await p6.textContent('#todoBadge')) === '1');
+  await p6.click('[data-fk="todo-fold"]');
+  check('完了したものを表示できる', (await p6.locator('#todoList .todo-row.is-done').count()) === 1);
+
+  // これから（未来のやること）
+  await p6.click('[data-fk="todo-view-future"]');
+  const tomorrow = await p6.evaluate(() => shiftKey(todayKey(), 1));
+  check('これからの追加先は明日', (await p6.textContent('#todoQuickDate')).includes('明日'));
+  await p6.fill('#todoQuickTitle', '会議資料の印刷');
+  await p6.press('#todoQuickTitle', 'Enter');
+  t6 = await st6();
+  check('これからで追加すると明日のやること', t6.todos.find((t) => t.title === '会議資料の印刷').date === tomorrow);
+  check('週の帯に件数を表示', (await p6.textContent(`[data-fk="cal-${tomorrow}"] .c`)) === '1');
+  check('今日の件数は今日の分だけ', (await p6.textContent('#todoBadge')) === '1');
+  // 月のカレンダー
+  await p6.click('[data-fk="cal-mode-month"]');
+  const later = await p6.evaluate(() => shiftKey(todayKey(), 3));
+  check('月のカレンダーを表示', (await p6.locator('#todoCal .cal-wd').count()) === 7 && (await p6.locator('#todoCal .cal-day').count()) >= 28);
+  if (later.slice(0, 7) !== today.slice(0, 7)) await p6.click('[data-fk="cal-next"]');
+  await p6.click(`[data-fk="cal-${later}"]`);
+  check('日付を選ぶとその日の一覧', (await p6.textContent('#todoList')).includes('のやることはありません'));
+  await p6.fill('#todoQuickTitle', '請求書の発行');
+  await p6.press('#todoQuickTitle', 'Enter');
+  check('選んだ日に追加', (await st6()).todos.find((t) => t.title === '請求書の発行').date === later);
+  // 詳しく設定（日付・時刻・お知らせ・優先・開始で使う内容）
+  await p6.fill('#todoQuickTitle', 'B社 訪問');
+  await p6.click('#todoDetailBtn');
+  check('詳しく設定の画面を開く', (await p6.inputValue('#teTitle')) === 'B社 訪問' && (await p6.inputValue('#teDate')) === later);
+  check('時刻がないと時刻系のお知らせは選べない', await p6.locator('[data-fk="te-notify-60"]').isDisabled());
+  await p6.click('[data-fk="te-chip-明日"]');
+  await p6.fill('#teTime', '13:00');
+  await p6.click('[data-fk="te-notify-60"]');
+  await p6.click('[data-fk="te-notify-prev"]');
+  await p6.click('[data-fk="te-pri-true"]');
+  await p6.selectOption('#teCat', 'cat1');
+  await p6.fill('#teCust', 'A社');
+  await p6.press('#teCust', 'Enter');
+  await p6.fill('#teMemo', '持ち物：提案資料');
+  await p6.click('#teSave');
+  t6 = await st6();
+  const visit = t6.todos.find((t) => t.title === 'B社 訪問');
+  check('詳しい設定で保存', visit && visit.date === tomorrow && visit.time === '13:00' && visit.priority && visit.notify.includes('60') && visit.notify.includes('prev') && visit.categoryId === 'cat1' && visit.customer === 'A社' && visit.memo === '持ち物：提案資料', JSON.stringify(visit));
+  check('保存後は「これから」に戻る', await p6.locator('#screen-todo').isVisible() && (await p6.getAttribute('[data-fk="todo-view-future"]', 'aria-pressed')) === 'true');
+  // 前日のお知らせ時刻を設定で変える
+  await goSetting(p6, 'notify');
+  await p6.fill('#setPrevTime', '16:00');
+  await p6.locator('#setPrevTime').press('Tab');
+  const prevAt = await p6.evaluate((id) => noticeTimes(todoById(id)).find((n) => n.key === 'prev').at, visit.id);
+  check('前日のお知らせ時刻を設定で変えられる', prevAt === await p6.evaluate(() => combine(todayKey(), '16:00')));
+  check('設定メニューに「やること・お知らせ」', (await st6()).settings.prevDayTime === '16:00');
+
+  // お知らせ
+  await p6.click('.tab[data-screen="record"]');
+  await set6(`const t0 = Date.now() + 3 * 60000; state.todos.push({ id: 'al1', title: 'B社へ折り返し電話', date: dateKey(t0), time: fmtHM(t0), priority: false, notify: ['5'], categoryId: 'cat1', customer: 'B社', project: '', memo: '', done: false, doneAt: null, createdAt: Date.now(), carriedFrom: null, notified: [], snoozeAt: null });`);
+  await p6.evaluate(() => checkTodoAlerts());
+  check('時刻になると画面にお知らせ', (await p6.textContent('#alertArea')).includes('まもなく「B社へ折り返し電話」'));
+  check('端末の通知も出す', (await p6.evaluate(() => window.__notes.map((n) => n.title))).some((t) => t.includes('B社へ折り返し電話')));
+  await p6.evaluate(() => checkTodoAlerts());
+  const callAlert = p6.locator('#alertArea .alert-item', { hasText: 'B社へ折り返し電話' });
+  check('同じお知らせは繰り返さない', (await p6.evaluate(() => window.__notes.filter((n) => n.title.includes('B社へ折り返し電話')).length)) === 1 && (await callAlert.count()) === 1);
+  await callAlert.locator('button', { hasText: '10分後' }).click();
+  check('10分後で閉じる', (await callAlert.count()) === 0 && (await st6()).todos.find((t) => t.id === 'al1').snoozeAt > Date.now());
+  await p6.evaluate(() => checkTodoAlerts(Date.now() + 11 * 60000));
+  check('10分後にもう一度お知らせ', (await callAlert.count()) === 1);
+  await callAlert.locator('button', { hasText: '▶ 開始' }).click();
+  check('お知らせから作業を開始', (await st6()).records.find((r) => r.end === null).todoId === 'al1');
+  await p6.screenshot({ path: path.join(SHOT_DIR, 'todo-record.png'), fullPage: true });
+
+  // 期限切れ・持ち越し・朝のまとめ
+  await set6(`const y = shiftKey(todayKey(), -1); state.todos.push({ id: 'old1', title: '請求書の確認', date: y, time: '', priority: false, notify: [], categoryId: null, customer: 'B社', project: '', memo: '', done: false, doneAt: null, createdAt: 1, carriedFrom: null, notified: [], snoozeAt: null }); const od = Date.now() - 2 * 3600000; if (dateKey(od) === todayKey()) state.todos.push({ id: 'od1', title: '期限切れのテスト', date: dateKey(od), time: fmtHM(od), priority: false, notify: [], categoryId: null, customer: '', project: '', memo: '', done: false, doneAt: null, createdAt: 2, carriedFrom: null, notified: [], snoozeAt: null });`);
+  await p6.click('.tab[data-screen="todo"]');
+  await p6.click('[data-fk="todo-view-today"]');
+  const listText = await p6.textContent('#todoList');
+  check('過去の未完了は「持ち越し」に表示', listText.includes('持ち越し') && listText.includes('請求書の確認'));
+  const hasOd = (await st6()).todos.some((t) => t.id === 'od1');
+  check('時刻を過ぎたものは期限切れと表示', !hasOd || listText.includes('期限切れ（2時間過ぎ）'), listText);
+  await p6.evaluate(() => localStorage.removeItem('sagyokanri:ui'));
+  await p6.click('.tab[data-screen="record"]');
+  check('その日に初めて開いたとき今日のやることをまとめて表示', (await p6.textContent('#morningBox')).includes('今日のやること'));
+  await p6.click('[data-fk="morning-close"]');
+  check('閉じると今日は出さない', (await p6.textContent('#morningBox')) === '');
+  await p6.screenshot({ path: path.join(SHOT_DIR, 'todo-record2.png'), fullPage: true });
+  await p6.click('.tab[data-screen="todo"]');
+  await p6.screenshot({ path: path.join(SHOT_DIR, 'todo-today.png'), fullPage: true });
+
+  // 業務終了時の確認
+  await p6.click('.tab[data-screen="record"]');
+  await p6.click('#recEnd');
+  await p6.waitForSelector('#dialog[open]');
+  check('業務終了時に未完了と明日の予定を表示', (await p6.textContent('#dialogTitle')) === '業務終了の前に' && (await p6.textContent('#dialogContent')).includes('明日') && (await p6.textContent('#dialogContent')).includes('B社 訪問'));
+  const pend = (await st6()).todos.filter((t) => !t.done && t.date <= today);
+  const quote = pend.find((t) => t.title === 'A社へ見積書を送付');
+  const oldT = pend.find((t) => t.id === 'old1');
+  await p6.click(`[data-fk="end-${quote.id}-done"]`);
+  await p6.click(`[data-fk="end-${oldT.id}-pick"]`);
+  const pickDate = await p6.evaluate(() => shiftKey(todayKey(), 5));
+  await p6.fill(`#dialogContent input[type=date]:not([hidden])`, pickDate);
+  await p6.screenshot({ path: path.join(SHOT_DIR, 'todo-end.png'), fullPage: true });
+  await p6.click('#dialog[open] #dialogButtons button >> text=業務終了');
+  t6 = await st6();
+  check('「完了」を選ぶと完了', t6.todos.find((t) => t.id === quote.id).done);
+  check('「日付を選ぶ」で別の日へ移す', t6.todos.find((t) => t.id === 'old1').date === pickDate);
+  check('ほかは明日へ持ち越し', t6.todos.filter((t) => ['al1', 'od1'].includes(t.id)).every((t) => t.date === tomorrow && t.carriedFrom));
+  check('確認のあと業務終了', t6.records.every((r) => r.end !== null) && await p6.locator('#screen-report').isVisible());
+  await goSetting(p6, 'notify');
+  await p6.screenshot({ path: path.join(SHOT_DIR, 'todo-settings.png'), fullPage: true });
+  await p6.click('.tab[data-screen="todo"]');
+  await p6.click('[data-fk="todo-view-future"]');
+  await p6.screenshot({ path: path.join(SHOT_DIR, 'todo-future.png'), fullPage: true });
+  await ctx6.close();
   check('index.html 以外のファイルを読み込んでいない', otherFiles.size === 0, [...otherFiles].join(', '));
   check('ページでJavaScriptエラーが発生していない', errors.length === 0, errors.join(' | '));
   console.log(`\n結果: ${passed} 件成功 / ${failed} 件失敗（スクリーンショット: ${SHOT_DIR}）`);
