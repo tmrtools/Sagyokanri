@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>作業記録</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="storageError" class="storage-error" role="alert" hidden></div>
+
+  <nav class="tabs" aria-label="画面の切り替え">
+    <button type="button" class="tab" data-screen="record">記録</button>
+    <button type="button" class="tab" data-screen="report">日報</button>
+    <button type="button" class="tab" data-screen="master">マスタ管理</button>
+    <button type="button" class="tab" data-screen="settings">作業ボタン設定</button>
+  </nav>
+
+  <main>
+    <!-- ========== 記録画面 ========== -->
+    <section id="screen-record" class="screen screen-record" aria-labelledby="recordHeading" hidden>
+      <h1 id="recordHeading" class="visually-hidden">記録</h1>
+
+      <div class="rec-header">
+        <div>
+          <div id="recDate" class="rec-date"></div>
+          <div class="rec-total">実働 <span id="recTotal" class="num"></span></div>
+        </div>
+        <button type="button" id="recToReport" class="btn btn-small">日報を見る →</button>
+      </div>
+
+      <div class="rec-current" aria-live="polite">
+        <div id="recCurrentName" class="rec-current-name"></div>
+        <div id="recElapsed" class="rec-elapsed num" aria-live="off">--:--:--</div>
+        <div id="recStart" class="rec-start num"></div>
+      </div>
+
+      <div class="rec-fields">
+        <div class="field">
+          <label for="recCustomer">顧客</label>
+          <div id="recCustomerSlot"></div>
+        </div>
+        <div class="field">
+          <label for="recProject">案件</label>
+          <div id="recProjectSlot"></div>
+        </div>
+        <div class="field">
+          <label for="recMemo">メモ</label>
+          <input type="text" id="recMemo" autocomplete="off" placeholder="任意">
+        </div>
+        <p id="recFieldsNote" class="note" hidden></p>
+      </div>
+
+      <div class="work-area">
+        <div id="workGrid" class="work-grid" role="group" aria-label="作業ボタン"></div>
+        <div id="otherList" class="other-list" hidden></div>
+      </div>
+
+      <button type="button" id="recResume" class="btn btn-block"></button>
+
+      <section class="rec-recent" aria-labelledby="recentHeading">
+        <h2 id="recentHeading" class="section-title">直近の記録</h2>
+        <ol id="recRecent" class="recent-list"></ol>
+      </section>
+
+      <div class="rec-bottom">
+        <button type="button" id="recBreak" class="btn"></button>
+        <button type="button" id="recEnd" class="btn btn-primary">業務終了</button>
+      </div>
+    </section>
+
+    <!-- ========== 日報画面 ========== -->
+    <section id="screen-report" class="screen screen-wide" aria-labelledby="reportHeading" hidden>
+      <h1 id="reportHeading" class="screen-title">日報</h1>
+      <div class="date-nav">
+        <button type="button" id="repPrev" class="btn">← 前日</button>
+        <label class="visually-hidden" for="repDate">表示する日付</label>
+        <input type="date" id="repDate">
+        <button type="button" id="repNext" class="btn">翌日 →</button>
+        <button type="button" id="repToday" class="btn">今日</button>
+      </div>
+
+      <div class="report-layout">
+        <div class="report-main">
+          <section class="card" aria-labelledby="listHeading">
+            <div class="card-head">
+              <h2 id="listHeading" class="section-title">記録一覧</h2>
+              <button type="button" id="repAdd" class="btn btn-small">＋ 記録を追加</button>
+            </div>
+            <p id="repWarnSummary" class="warn" hidden></p>
+            <div id="repList" class="rec-rows"></div>
+          </section>
+
+          <section class="card" aria-labelledby="checkHeading">
+            <h2 id="checkHeading" class="section-title">登録前の確認</h2>
+            <p class="note">顧客・案件・メモがすべて未入力の記録と、計測中の記録を表示します。</p>
+            <div id="repCheck" class="rec-rows"></div>
+          </section>
+        </div>
+
+        <div class="report-side">
+          <section class="card" aria-labelledby="textHeading">
+            <h2 id="textHeading" class="section-title">日報テキスト</h2>
+            <button type="button" id="repCopy" class="btn btn-primary btn-copy">日報テキストをコピー</button>
+            <p id="repCopyStatus" class="copy-status" role="status" aria-live="polite"></p>
+            <label class="visually-hidden" for="repText">日報テキスト</label>
+            <textarea id="repText" class="report-text num" readonly rows="10"></textarea>
+          </section>
+
+          <section class="card" aria-labelledby="barsHeading">
+            <h2 id="barsHeading" class="section-title">カテゴリ別の合計</h2>
+            <div id="repBars" class="bars"></div>
+          </section>
+
+          <section class="card" aria-labelledby="dataHeading">
+            <h2 id="dataHeading" class="section-title">データの書き出しと復元</h2>
+            <div class="stack">
+              <button type="button" id="csvDay" class="btn">表示中の日付をCSVで書き出す</button>
+              <fieldset class="range">
+                <legend>期間を指定してCSVで書き出す</legend>
+                <div class="range-row">
+                  <label>開始日 <input type="date" id="csvFrom"></label>
+                  <label>終了日 <input type="date" id="csvTo"></label>
+                </div>
+                <button type="button" id="csvRange" class="btn">期間をCSVで書き出す</button>
+              </fieldset>
+              <button type="button" id="jsonBackup" class="btn">全データをJSONでバックアップ</button>
+              <label class="btn file-btn">JSONバックアップから復元
+                <input type="file" id="jsonRestore" accept=".json,application/json" class="visually-hidden">
+              </label>
+              <p id="dataStatus" class="note" role="status" aria-live="polite"></p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== マスタ管理画面 ========== -->
+    <section id="screen-master" class="screen screen-wide" aria-labelledby="masterHeading" hidden>
+      <h1 id="masterHeading" class="screen-title">マスタ管理</h1>
+      <div class="master-tools">
+        <label class="btn file-btn">CSVを取り込む
+          <input type="file" id="masterImport" accept=".csv,text/csv" class="visually-hidden">
+        </label>
+        <button type="button" id="masterExport" class="btn">CSVを書き出す</button>
+        <span class="note">形式：顧客名,案件名（案件名は空欄可）</span>
+      </div>
+      <p id="masterStatus" class="note" role="status" aria-live="polite"></p>
+
+      <div class="master-cols">
+        <section class="card" aria-labelledby="custHeading">
+          <h2 id="custHeading" class="section-title">顧客</h2>
+          <form id="custAddForm" class="add-form">
+            <label class="visually-hidden" for="custAddName">追加する顧客名</label>
+            <input type="text" id="custAddName" placeholder="顧客名" autocomplete="off">
+            <button type="submit" class="btn">追加</button>
+          </form>
+          <ul id="custList" class="master-list"></ul>
+        </section>
+
+        <section class="card" aria-labelledby="projHeading">
+          <h2 id="projHeading" class="section-title">案件</h2>
+          <form id="projAddForm" class="add-form">
+            <label class="visually-hidden" for="projAddName">追加する案件名</label>
+            <input type="text" id="projAddName" placeholder="案件名" autocomplete="off">
+            <button type="submit" class="btn">追加</button>
+          </form>
+          <ul id="projList" class="master-list"></ul>
+        </section>
+
+        <section class="card" aria-labelledby="manualHeading">
+          <h2 id="manualHeading" class="section-title">手入力された名前</h2>
+          <p class="note">記録にあってマスタにない名前です。</p>
+          <h3 class="sub-title">顧客名</h3>
+          <ul id="manualCustList" class="master-list"></ul>
+          <h3 class="sub-title">案件名</h3>
+          <ul id="manualProjList" class="master-list"></ul>
+        </section>
+      </div>
+    </section>
+
+    <!-- ========== 作業ボタン設定画面 ========== -->
+    <section id="screen-settings" class="screen screen-wide" aria-labelledby="settingsHeading" hidden>
+      <h1 id="settingsHeading" class="screen-title">作業ボタン設定</h1>
+      <div class="settings-cols">
+        <section class="card" aria-labelledby="catHeading">
+          <div class="card-head">
+            <h2 id="catHeading" class="section-title">作業の一覧</h2>
+            <button type="button" id="catSortUsage" class="btn btn-small">よく使う順に並べ替え</button>
+          </div>
+          <p class="note">使用回数は過去30日に記録した回数です。8個までは記録画面にボタンで表示します。</p>
+          <ol id="catList" class="cat-list"></ol>
+          <form id="catAddForm" class="add-form">
+            <label class="visually-hidden" for="catAddName">追加する作業名</label>
+            <input type="text" id="catAddName" placeholder="作業名" autocomplete="off">
+            <button type="submit" class="btn">追加</button>
+          </form>
+        </section>
+
+        <section class="card" aria-labelledby="previewHeading">
+          <h2 id="previewHeading" class="section-title">記録画面での表示</h2>
+          <div class="preview-frame">
+            <div id="previewGrid" class="work-grid" aria-label="作業ボタンのプレビュー"></div>
+            <div id="previewOthers" class="preview-others"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dialog" class="dialog" aria-labelledby="dialogTitle">
+    <form method="dialog" class="dialog-inner" id="dialogForm">
+      <h2 id="dialogTitle" class="dialog-title"></h2>
+      <p id="dialogMessage" class="dialog-message"></p>
+      <div id="dialogContent"></div>
+      <p id="dialogError" class="warn" role="alert" hidden></p>
+      <div id="dialogButtons" class="dialog-buttons"></div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
