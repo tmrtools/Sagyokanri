@@ -699,6 +699,22 @@ main { padding: 12px; }
 .end-sub { font-weight: 700; font-size: 14px; margin: 12px 0 4px; }
 .end-tomorrow { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 .end-tomorrow li { padding: 4px 0; border-bottom: 1px solid var(--border); }
+
+/* ---------- 顧客・案件別の合計 ---------- */
+.agg-box { margin-top: 16px; }
+.agg-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.agg-table th { font-size: 12px; color: var(--sub); font-weight: 400; text-align: left; border-bottom: 1px solid var(--border); padding: 4px 2px; }
+.agg-table td { border-bottom: 1px solid var(--border); padding: 6px 2px; vertical-align: middle; }
+.agg-table .num-col { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.agg-table .agg-label { word-break: break-all; }
+.agg-table .agg-time { font-weight: 700; }
+.agg-table .agg-act { text-align: right; width: 1%; white-space: nowrap; padding-left: 8px; }
+.agg-table tr.is-empty td { color: var(--warn); }
+.agg-table tr.agg-sub td { color: var(--sub); font-size: 12px; border-bottom-style: dashed; padding: 2px 2px 4px 14px; }
+.agg-table tr.agg-total td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: 0; }
+.agg-table .btn.is-copied { border-color: var(--accent); color: var(--accent); }
+.toggle-grid.toggle-2 { grid-template-columns: 1fr 1fr; }
+.cols-preview { margin: 0; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 13px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -872,6 +888,18 @@ main { padding: 12px; }
         <ul id="repCheck" class="check-list"></ul>
       </section>
 
+      <section id="aggBox" class="agg-box" aria-labelledby="aggHeading" hidden>
+        <div class="section-head">
+          <h2 id="aggHeading" class="section-title">顧客・案件別の合計</h2>
+          <span id="aggRule" class="note"></span>
+        </div>
+        <div id="aggTable"></div>
+        <p id="aggDiff" class="note"></p>
+        <label class="check-label"><input type="checkbox" id="aggBreakdown"> 作業の内訳を表示</label>
+        <button type="button" id="aggCopy" class="btn btn-primary btn-block">表をコピー（Excel・日報システムに貼り付け）</button>
+        <p id="aggStatus" class="copy-status" role="status" aria-live="polite"></p>
+      </section>
+
       <section aria-labelledby="listHeading">
         <div class="section-head">
           <h2 id="listHeading" class="section-title">記録</h2>
@@ -892,6 +920,7 @@ main { padding: 12px; }
       <h1 id="menuHeading" class="screen-title">設定</h1>
       <ul class="menu-list">
         <li><button type="button" class="menu-item" data-go="notify"><span class="menu-icon" aria-hidden="true">🔔</span><span class="menu-text"><span class="menu-name">やること・お知らせ</span><span class="menu-desc">前日・当日の朝のお知らせ時刻、端末の通知と音</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
+        <li><button type="button" class="menu-item" data-go="agg"><span class="menu-icon" aria-hidden="true">Σ</span><span class="menu-text"><span class="menu-name">集計のしかた</span><span class="menu-desc">顧客・案件別の合計の時間の単位・丸め方・表示の形</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
         <li><button type="button" class="menu-item" data-go="buttons"><span class="menu-icon" aria-hidden="true">▦</span><span class="menu-text"><span class="menu-name">作業ボタン</span><span class="menu-desc">作業名の変更・追加・並べ替え</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
         <li><button type="button" class="menu-item" data-go="master"><span class="menu-icon" aria-hidden="true">👥</span><span class="menu-text"><span class="menu-name">顧客・案件<span id="menuManualBadge" class="menu-badge" hidden></span></span><span class="menu-desc">マスタの登録・編集、手入力された名前の整理</span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
         <li><button type="button" class="menu-item" data-go="file"><span class="menu-icon" aria-hidden="true">💾</span><span class="menu-text"><span class="menu-name">データファイル</span><span id="menuFileDesc" class="menu-desc"></span></span><span class="menu-arrow" aria-hidden="true">›</span></button></li>
@@ -1046,6 +1075,22 @@ main { padding: 12px; }
       </section>
     </section>
 
+    <!-- ========== 設定 > 集計のしかた ========== -->
+    <section id="screen-agg" class="screen screen-narrow" aria-labelledby="aggSetHeading" hidden>
+      <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
+      <h1 id="aggSetHeading" class="screen-title">集計のしかた</h1>
+      <p class="note">日報画面の「顧客・案件別の合計」の時間を、日報システムの決まりに合わせます。</p>
+      <section class="card stack" aria-label="集計の設定">
+        <div class="field"><span class="field-label" id="aggUnitL">時間の単位</span><div id="aggUnit" class="toggle-grid" role="group" aria-labelledby="aggUnitL"></div></div>
+        <div class="field"><span class="field-label" id="aggRoundingL">端数の処理</span><div id="aggRounding" class="toggle-grid" role="group" aria-labelledby="aggRoundingL"></div></div>
+        <div class="field"><span class="field-label" id="aggFormatL">表示の形</span><div id="aggFormat" class="toggle-grid" role="group" aria-labelledby="aggFormatL"></div></div>
+        <div class="field"><span class="field-label" id="aggRoundPerL">丸めるタイミング</span><div id="aggRoundPer" class="toggle-grid toggle-2" role="group" aria-labelledby="aggRoundPerL"></div></div>
+        <div class="field"><span class="field-label" id="aggGroupByL">まとめる単位</span><div id="aggGroupBy" class="toggle-grid toggle-2" role="group" aria-labelledby="aggGroupByL"></div></div>
+        <label class="check-label"><input type="checkbox" id="aggInReport"> 日報テキストにも顧客・案件別の合計を入れる</label>
+        <div class="field"><span class="field-label">表をコピーしたときの列</span><pre id="aggColsPreview" class="cols-preview"></pre></div>
+      </section>
+    </section>
+
     <!-- ========== 設定 > 書き出し・バックアップ ========== -->
     <section id="screen-export" class="screen screen-narrow" aria-labelledby="exportHeading" hidden>
       <button type="button" class="back-btn" data-go="menu">‹ 設定</button>
@@ -1061,6 +1106,21 @@ main { padding: 12px; }
             <label>終了日 <input type="date" id="csvTo"></label>
           </div>
           <button type="button" id="csvRange" class="btn">期間をCSVで書き出す</button>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="aggCsvHeading">
+        <h2 id="aggCsvHeading" class="section-title">顧客・案件別の合計をCSVで書き出す</h2>
+        <p class="note">「集計のしかた」の設定で丸めた時間と、実際の分を書き出します。</p>
+        <div class="stack">
+          <div class="range-row">
+            <label>開始日 <input type="date" id="aggFrom"></label>
+            <label>終了日 <input type="date" id="aggTo"></label>
+          </div>
+          <div class="toggle-row" role="group" aria-label="まとめ方">
+            <button type="button" id="aggModeDay" class="toggle" aria-pressed="true">日ごと</button>
+            <button type="button" id="aggModeTotal" class="toggle" aria-pressed="false">期間の合計</button>
+          </div>
+          <button type="button" id="aggCsv" class="btn">顧客・案件別の合計をCSVで書き出す</button>
         </div>
       </section>
       <section class="card" aria-labelledby="backupHeading">
@@ -1111,6 +1171,7 @@ const USAGE_DAYS = 30;
  *             category, customer, project, memo, minutes }],   // 開始時刻順。休憩は含まない
  *   totalMinutes: number,                                      // 丸める前の合計分
  *   categories: [{ name, minutes }],                           // 分の多い順
+ *   byCustomer: { rows: [{ label, time, minutes }], total }    // 顧客・案件別の合計（設定で入れる場合のみ）
  * }
  * ===================================================================== */
 function formatDailyReport(report) {
@@ -1129,6 +1190,11 @@ function formatDailyReport(report) {
   out.push('');
   const cats = report.categories.map((c) => `${c.name} ${toHours(c.minutes)}h`).join('／');
   out.push(`合計 ${toHours(report.totalMinutes)}h：${cats}`);
+  if (report.byCustomer && report.byCustomer.rows.length) {
+    out.push('', '■顧客・案件別');
+    for (const r of report.byCustomer.rows) out.push(`${r.label}　${r.time}`);
+    out.push(`合計　${report.byCustomer.total}`);
+  }
   return out.join('\n');
 }
 
@@ -1227,11 +1293,12 @@ function defaultState() {
     records: [],
     draft: { customer: '', project: '', memo: '' },
     todos: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: { ...DEFAULT_SETTINGS, agg: { ...DEFAULT_AGG } },
     savedAt: 0,
   };
 }
-const DEFAULT_SETTINGS = { prevDayTime: '17:00', morningTime: '08:30', sound: true };
+const DEFAULT_AGG = { unit: 15, rounding: 'round', format: 'hours', roundPer: 'group', groupBy: 'cp', inReport: true, showBreakdown: true };
+const DEFAULT_SETTINGS = { prevDayTime: '17:00', morningTime: '08:30', sound: true, agg: { ...DEFAULT_AGG } };
 
 /**
  * 古い版のデータを最新の形に変換する。
@@ -1284,6 +1351,20 @@ function migrate(raw) {
     prevDayTime: hm(st.prevDayTime, DEFAULT_SETTINGS.prevDayTime),
     morningTime: hm(st.morningTime, DEFAULT_SETTINGS.morningTime),
     sound: typeof st.sound === 'boolean' ? st.sound : DEFAULT_SETTINGS.sound,
+    agg: (() => {
+      // 顧客・案件別の集計のしかた（項目が無ければ初期値）
+      const a = st.agg && typeof st.agg === 'object' ? st.agg : {};
+      const pick = (v, list, def) => (list.includes(v) ? v : def);
+      return {
+        unit: pick(a.unit, [1, 6, 15, 30, 60], DEFAULT_AGG.unit),
+        rounding: pick(a.rounding, ['round', 'ceil', 'floor'], DEFAULT_AGG.rounding),
+        format: pick(a.format, ['hours', 'hm', 'min'], DEFAULT_AGG.format),
+        roundPer: pick(a.roundPer, ['group', 'record'], DEFAULT_AGG.roundPer),
+        groupBy: pick(a.groupBy, ['cp', 'cpc'], DEFAULT_AGG.groupBy),
+        inReport: typeof a.inReport === 'boolean' ? a.inReport : DEFAULT_AGG.inReport,
+        showBreakdown: typeof a.showBreakdown === 'boolean' ? a.showBreakdown : DEFAULT_AGG.showBreakdown,
+      };
+    })(),
   };
   d.draft = { customer: str(d.draft && d.draft.customer), project: str(d.draft && d.draft.project), memo: str(d.draft && d.draft.memo) };
   d.savedAt = Number.isFinite(d.savedAt) ? d.savedAt : 0;
@@ -2267,8 +2348,8 @@ function createCombo({ kind, id, value = '', fk, label, getCustomer, onInput, on
 /* =====================================================================
  * 画面切り替え・再描画
  * ===================================================================== */
-const SCREENS = ['record', 'todo', 'todoedit', 'report', 'menu', 'buttons', 'master', 'file', 'export', 'notify'];
-const SETTING_SCREENS = ['menu', 'buttons', 'master', 'file', 'export', 'notify'];
+const SCREENS = ['record', 'todo', 'todoedit', 'report', 'menu', 'buttons', 'master', 'file', 'export', 'notify', 'agg'];
+const SETTING_SCREENS = ['menu', 'buttons', 'master', 'file', 'export', 'notify', 'agg'];
 const SCREEN_ALIASES = { settings: 'buttons' }; // 旧URLの互換
 let currentScreen = 'record';
 let reportDate = todayKey();
@@ -2313,6 +2394,7 @@ function renderAll() {
     renderAlerts();
     if (currentScreen === 'todo') renderTodo();
     if (currentScreen === 'notify') renderNotifySettings();
+    if (currentScreen === 'agg') renderAggSettings();
     if (currentScreen === 'report') renderReport();
     if (currentScreen === 'master') renderMaster();
     if (currentScreen === 'buttons') renderSettings();
@@ -2599,7 +2681,19 @@ function buildReportData(key, now = Date.now()) {
   const categories = [...byCat.values()].sort((a, b) => b.minutes - a.minutes || a.first - b.first)
     .map(({ name, minutes }) => ({ name, minutes }));
   const totalMinutes = lines.reduce((s, l) => s + l.minutes, 0);
-  return { date: key, lines, totalMinutes, categories };
+  const data = { date: key, lines, totalMinutes, categories };
+  if (state.settings.agg.inReport) {
+    const agg = aggregateByCustomer(recs, now);
+    data.byCustomer = {
+      rows: agg.rows.map((r) => ({
+        label: r.empty ? `（顧客・案件なし${r.category ? `・${r.category}` : ''}）` : `${[r.customer, r.project].filter(Boolean).join('／')}${r.category ? `（${r.category}）` : ''}`,
+        time: fmtAggTime(r.rounded),
+        minutes: r.minutes,
+      })),
+      total: fmtAggTime(agg.totalRounded),
+    };
+  }
+  return data;
 }
 
 function recordWarnings(list) {
@@ -2846,6 +2940,7 @@ function renderReport() {
     bars.append(t);
   }
 
+  renderAggregate();
   const ta = $('#repText');
   ta.value = formatDailyReport(data);
   // 全文が見えるよう高さを内容に合わせる
@@ -2866,6 +2961,8 @@ function renderExport() {
   $('#csvDay').textContent = `日報で表示中の日（${m}/${d}）をCSVで書き出す`;
   if (!$('#csvFrom').value) $('#csvFrom').value = reportDate;
   if (!$('#csvTo').value) $('#csvTo').value = reportDate;
+  if (!$('#aggFrom').value) $('#aggFrom').value = `${reportDate.slice(0, 8)}01`;
+  if (!$('#aggTo').value) $('#aggTo').value = reportDate;
 }
 
 function addRecordOnReport() {
@@ -4224,12 +4321,244 @@ function initTodo() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkTodoAlerts(); });
 }
 
+/* =====================================================================
+ * 顧客・案件別の合計（日報システムへの登録用）
+ * ===================================================================== */
+const AGG_UNITS = [
+  { v: 1, label: '1分' }, { v: 6, label: '0.1h（6分）' }, { v: 15, label: '0.25h（15分）' },
+  { v: 30, label: '0.5h（30分）' }, { v: 60, label: '1h' },
+];
+const AGG_ROUNDING = [{ v: 'round', label: '四捨五入' }, { v: 'ceil', label: '切り上げ' }, { v: 'floor', label: '切り捨て' }];
+const AGG_FORMATS = [{ v: 'hours', label: '2.25h' }, { v: 'hm', label: '2:15' }, { v: 'min', label: '135分' }];
+const AGG_ROUND_PER = [{ v: 'group', label: '顧客・案件ごとの合計を丸める' }, { v: 'record', label: '記録1件ごとに丸める' }];
+const AGG_GROUP_BY = [{ v: 'cp', label: '顧客＋案件' }, { v: 'cpc', label: '顧客＋案件＋作業' }];
+
+/** 分を設定の単位・端数処理で丸める */
+function roundAggMinutes(min, agg = state.settings.agg) {
+  if (agg.unit <= 1) return min;
+  const f = agg.rounding === 'ceil' ? Math.ceil : agg.rounding === 'floor' ? Math.floor : Math.round;
+  return f(min / agg.unit) * agg.unit;
+}
+/** 表示用（withUnit=false はコピー用の数値だけ） */
+function fmtAggTime(min, withUnit = true, agg = state.settings.agg) {
+  if (agg.format === 'hm') return `${Math.floor(min / 60)}:${pad2(min % 60)}`;
+  if (agg.format === 'min') return withUnit ? `${min}分` : String(min);
+  const dec = { 1: 2, 6: 1, 15: 2, 30: 1, 60: 0 }[agg.unit] ?? 2;
+  const v = (min / 60).toFixed(dec);
+  return withUnit ? `${v}h` : v;
+}
+function aggRuleText(agg = state.settings.agg) {
+  const u = AGG_UNITS.find((x) => x.v === agg.unit);
+  const r = AGG_ROUNDING.find((x) => x.v === agg.rounding);
+  return agg.unit <= 1 ? '1分単位' : `${u ? u.label.replace(/（.*）/, '') : ''}単位・${r ? r.label : ''}`;
+}
+/**
+ * 記録を顧客・案件（設定により作業も）ごとに合計する。休憩は含まない。
+ * rows は時間の長い順。顧客・案件ともに空のものは最後。
+ */
+function aggregateByCustomer(records, now = Date.now(), agg = state.settings.agg) {
+  const map = new Map();
+  for (const r of records) {
+    if (r.type !== 'work') continue;
+    const customer = r.customer.replace(/\s+/g, ' ').trim();
+    const project = r.project.replace(/\s+/g, ' ').trim();
+    const key = `${norm(customer)}\u0000${norm(project)}${agg.groupBy === 'cpc' ? `\u0000${r.categoryId}` : ''}`;
+    let e = map.get(key);
+    if (!e) {
+      e = { key, customer, project, categoryId: agg.groupBy === 'cpc' ? r.categoryId : null, minutes: 0, roundedSum: 0, cats: new Map(), records: [] };
+      map.set(key, e);
+    }
+    const m = recordMinutes(r, now);
+    e.minutes += m;
+    e.roundedSum += roundAggMinutes(m, agg);
+    e.cats.set(r.categoryId, (e.cats.get(r.categoryId) || 0) + m);
+    e.records.push(r);
+  }
+  const rows = [...map.values()].map((e) => {
+    const empty = !e.customer && !e.project;
+    const cat = e.categoryId ? categoryById(e.categoryId) : null;
+    return {
+      ...e,
+      empty,
+      category: cat ? cat.name : '',
+      rounded: agg.roundPer === 'record' ? e.roundedSum : roundAggMinutes(e.minutes, agg),
+      breakdown: [...e.cats.entries()].sort((a, b) => b[1] - a[1]).map(([id, m]) => {
+        const c = categoryById(id);
+        return { name: c ? c.name : '（不明な作業）', minutes: m };
+      }),
+    };
+  }).sort((a, b) => (a.empty ? 1 : 0) - (b.empty ? 1 : 0) || b.minutes - a.minutes);
+  return {
+    rows,
+    totalMinutes: rows.reduce((s, x) => s + x.minutes, 0),
+    totalRounded: rows.reduce((s, x) => s + x.rounded, 0),
+  };
+}
+function aggLabel(row, emptyText = '顧客・案件なし') {
+  if (row.empty) return `${emptyText}${row.category ? `（${row.category}）` : ''}`;
+  const base = `${row.customer || '（顧客なし）'}／${row.project || '（案件なし）'}`;
+  return row.category ? `${base}（${row.category}）` : base;
+}
+/** 日報システムなどに貼り付ける表（タブ区切り・見出しなし） */
+function aggToTsv(agg) {
+  const byCat = state.settings.agg.groupBy === 'cpc';
+  return `${agg.rows.map((r) => [r.customer, r.project, ...(byCat ? [r.category] : []), fmtAggTime(r.rounded, false)].join('\t')).join('\r\n')}\r\n`;
+}
+
+/** クリップボードへコピー（使えないときは選択してコピー） */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (_) { /* 下で試す */ }
+  const ta = el('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  const back = document.activeElement;
+  document.body.append(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+  ta.remove();
+  if (back && back.focus) back.focus();
+  return ok;
+}
+function flashStatus(node, text) {
+  node.textContent = text;
+  clearTimeout(node._t);
+  node._t = setTimeout(() => { node.textContent = ''; }, 4000);
+}
+
+const aggCopied = new Set(); // 「コピー済」の表示（日付と行ごと）
+function renderAggregate() {
+  const box = $('#aggBox');
+  const agg = aggregateByCustomer(recordsOfDate(reportDate));
+  box.hidden = agg.rows.length === 0;
+  if (!agg.rows.length) return;
+  $('#aggRule').textContent = aggRuleText();
+  $('#aggBreakdown').checked = !!state.settings.agg.showBreakdown;
+  const byCat = state.settings.agg.groupBy === 'cpc';
+  const wrap = $('#aggTable');
+  wrap.innerHTML = '';
+  const table = el('table', 'agg-table');
+  const thead = el('thead');
+  const hr = el('tr');
+  hr.append(el('th', null, byCat ? '顧客／案件（作業）' : '顧客／案件'), el('th', 'num-col', '時間'), el('th', null, ''));
+  hr.lastChild.append(el('span', 'visually-hidden', '操作'));
+  thead.append(hr);
+  table.append(thead);
+  const tbody = el('tbody');
+  for (const r of agg.rows) {
+    const tr = el('tr', r.empty ? 'is-empty' : '');
+    tr.append(el('td', 'agg-label', r.empty ? `⚠ ${aggLabel(r)}` : aggLabel(r)));
+    tr.append(el('td', 'num-col agg-time', fmtAggTime(r.rounded)));
+    const td = el('td', 'agg-act');
+    if (r.empty) {
+      const b = button('入力', () => { const first = r.records[0]; openRecordEditor(first, 'cust'); }, 'btn btn-small');
+      b.setAttribute('aria-label', `顧客・案件なしの記録（${fmtHM(r.records[0].start)}から）に入力`);
+      b.dataset.fk = `agg-fill-${r.key}`;
+      td.append(b);
+    } else {
+      const k = `${reportDate}\u0000${r.key}`;
+      const done = aggCopied.has(k);
+      const b = button(done ? '✓ コピー済' : 'コピー', async () => {
+        if (await copyText(fmtAggTime(r.rounded, false))) { aggCopied.add(k); renderAll(); flashStatus($('#aggStatus'), `✓ 「${aggLabel(r)}」の時間（${fmtAggTime(r.rounded)}）をコピーしました`); }
+        else flashStatus($('#aggStatus'), '⚠ コピーできませんでした。');
+      }, `btn btn-small${done ? ' is-copied' : ''}`);
+      b.setAttribute('aria-label', `「${aggLabel(r)}」の時間をコピー`);
+      b.dataset.fk = `agg-copy-${r.key}`;
+      td.append(b);
+    }
+    tr.append(td);
+    tbody.append(tr);
+    if (state.settings.agg.showBreakdown) {
+      const sub = el('tr', 'agg-sub');
+      const parts = r.breakdown.map((x) => `${x.name} ${fmtAggTime(x.minutes, true, { ...state.settings.agg, format: 'hm' })}`).join('　');
+      sub.append(el('td', null, parts), el('td', 'num-col', `${Math.floor(r.minutes / 60)}:${pad2(r.minutes % 60)}`), el('td'));
+      tbody.append(sub);
+    }
+  }
+  const tot = el('tr', 'agg-total');
+  tot.append(el('td', null, '合計'), el('td', 'num-col agg-time', fmtAggTime(agg.totalRounded)), el('td'));
+  tbody.append(tot);
+  table.append(tbody);
+  wrap.append(table);
+  const diff = agg.totalRounded - agg.totalMinutes;
+  $('#aggDiff').textContent = `実際の合計 ${fmtDuration(agg.totalMinutes)}（丸めた合計との差 ${diff > 0 ? '+' : diff < 0 ? '−' : ''}${Math.abs(diff)}分）`;
+}
+async function copyAggregateTable() {
+  const agg = aggregateByCustomer(recordsOfDate(reportDate));
+  const ok = await copyText(aggToTsv(agg));
+  flashStatus($('#aggStatus'), ok ? `✓ 表をコピーしました（${agg.rows.length}行）。Excel や日報システムの表に貼り付けられます。` : '⚠ コピーできませんでした。');
+}
+
+/** 期間の顧客・案件別の合計をCSVで書き出す */
+function exportAggregateCsv(from, to, mode) {
+  if (!from || !to) { $('#dataStatus').textContent = '⚠ 開始日と終了日を指定してください。'; return; }
+  if (from > to) [from, to] = [to, from];
+  const byCat = state.settings.agg.groupBy === 'cpc';
+  const head = [...(mode === 'day' ? ['日付'] : []), '顧客', '案件', ...(byCat ? ['作業'] : []), '時間', '分'];
+  const rows = [head];
+  const recs = state.records.filter((r) => { const k = dateKey(r.start); return k >= from && k <= to; });
+  const line = (r, date) => [...(date ? [date] : []), r.customer, r.project, ...(byCat ? [r.category] : []), fmtAggTime(r.rounded, false), r.minutes];
+  if (mode === 'day') {
+    const days = [...new Set(recs.map((r) => dateKey(r.start)))].sort();
+    for (const k of days) for (const r of aggregateByCustomer(recs.filter((x) => dateKey(x.start) === k)).rows) rows.push(line(r, k));
+  } else {
+    for (const r of aggregateByCustomer(recs).rows) rows.push(line(r));
+  }
+  const name = `顧客案件別_${compactKey(from)}-${compactKey(to)}${mode === 'day' ? '_日ごと' : ''}.csv`;
+  download(name, toCsv(rows), 'text/csv;charset=utf-8');
+  $('#dataStatus').textContent = `✓ 顧客・案件別の合計（${rows.length - 1}行）を書き出しました（${name}）。`;
+}
+
+/* ----- 設定 > 集計のしかた ----- */
+function renderAggSettings() {
+  const a = state.settings.agg;
+  const group = (id, list, cur, onPick) => {
+    const box = $(id);
+    box.innerHTML = '';
+    for (const o of list) {
+      const b = button(o.label, () => { onPick(o.v); save(); renderAll(); }, 'toggle');
+      b.setAttribute('aria-pressed', String(cur === o.v));
+      b.dataset.fk = `agg-set-${id.slice(1)}-${o.v}`;
+      box.append(b);
+    }
+  };
+  group('#aggUnit', AGG_UNITS, a.unit, (v) => { a.unit = v; });
+  group('#aggRounding', AGG_ROUNDING, a.rounding, (v) => { a.rounding = v; });
+  group('#aggFormat', AGG_FORMATS, a.format, (v) => { a.format = v; });
+  group('#aggRoundPer', AGG_ROUND_PER, a.roundPer, (v) => { a.roundPer = v; });
+  group('#aggGroupBy', AGG_GROUP_BY, a.groupBy, (v) => { a.groupBy = v; });
+  $('#aggRounding').closest('.field').hidden = a.unit <= 1;
+  $('#aggRoundPer').closest('.field').hidden = a.unit <= 1;
+  $('#aggInReport').checked = !!a.inReport;
+  $('#aggColsPreview').textContent = `${a.groupBy === 'cpc' ? '顧客 ⇥ 案件 ⇥ 作業 ⇥ 時間' : '顧客 ⇥ 案件 ⇥ 時間'}\n（タブ区切り・見出しなし。Excel や日報システムの表に貼り付けられます）\n例：A社 ⇥ 新規提案 ⇥ ${fmtAggTime(roundAggMinutes(125), false)}`;
+}
+function initAggregate() {
+  $('#aggCopy').addEventListener('click', copyAggregateTable);
+  $('#aggBreakdown').addEventListener('change', (e) => { state.settings.agg.showBreakdown = e.target.checked; save(); renderAll(); });
+  $('#aggInReport').addEventListener('change', (e) => { state.settings.agg.inReport = e.target.checked; save(); renderAll(); });
+  $('#aggCsv').addEventListener('click', () => exportAggregateCsv($('#aggFrom').value, $('#aggTo').value, $('#aggModeDay').getAttribute('aria-pressed') === 'true' ? 'day' : 'total'));
+  for (const id of ['#aggModeDay', '#aggModeTotal']) {
+    $(id).addEventListener('click', () => {
+      $('#aggModeDay').setAttribute('aria-pressed', String(id === '#aggModeDay'));
+      $('#aggModeTotal').setAttribute('aria-pressed', String(id === '#aggModeTotal'));
+    });
+  }
+}
+
 function init() {
   initRecordScreen();
   initReportScreen();
   initMasterScreen();
   initSettingsScreen();
   initTodo();
+  initAggregate();
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => showScreen(t.dataset.screen)));
   document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
     showScreen(b.dataset.go);

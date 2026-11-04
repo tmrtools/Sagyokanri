@@ -54,14 +54,17 @@ function check(name, cond, detail = '') {
 
   // ---------------------------------------------------------------
   console.log('2. 再読み込み後の計測継続');
-  s.records[1].start = Date.now() - 3723000;
+  // 日付をまたぐと「前日の作業が計測中」の確認が出るため、今日の範囲で開始時刻をずらす
+  const sinceMidnight = Date.now() - new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+  const [offset, hh, mm] = sinceMidnight > 3723000 + 10000 ? [3723000, '01', '02'] : [63000, '00', '01'];
+  s.records[1].start = Date.now() - offset;
   await setState(s);
   const el = await page.textContent('#recElapsed');
-  check('経過時間が開始時刻との差で表示される', /^01:02:0[3-5]$/.test(el), el);
+  check('経過時間が開始時刻との差で表示される', new RegExp(`^${hh}:${mm}:0[3-5]$`).test(el), el);
   check('実行中の作業名が復元される', (await page.textContent('#recCurrentName')).includes('資料作成'));
   await page.waitForTimeout(2100);
   const el2 = await page.textContent('#recElapsed');
-  check('経過時間が進む', /^01:02:0[5-8]$/.test(el2), el2);
+  check('経過時間が進む', new RegExp(`^${hh}:${mm}:0[5-8]$`).test(el2), el2);
 
   // ---------------------------------------------------------------
   console.log('3. 入力欄・直前の作業に戻る・休憩');
@@ -879,6 +882,98 @@ function check(name, cond, detail = '') {
   await p6.click('[data-fk="todo-view-future"]');
   await p6.screenshot({ path: path.join(SHOT_DIR, 'todo-future.png'), fullPage: true });
   await ctx6.close();
+  // ---------------------------------------------------------------
+  console.log('19. 顧客・案件別の合計');
+  const ctx7 = await browser.newContext({ viewport: { width: 360, height: 900 }, locale: 'ja-JP', acceptDownloads: true });
+  await ctx7.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const p7 = await ctx7.newPage();
+  p7.on('pageerror', (e) => errors.push(e.message));
+  await p7.goto(URL);
+  const st7 = () => p7.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
+  const d7 = await st7();
+  check('集計のしかたの初期値（0.25h・四捨五入・顧客＋案件）', d7.settings.agg.unit === 15 && d7.settings.agg.rounding === 'round' && d7.settings.agg.groupBy === 'cp' && d7.settings.agg.inReport === true);
+  const at7 = (hm) => p7.evaluate(([k, t]) => combine(k, t), [today, hm]);
+  d7.records = [];
+  const r7 = async (id, sh, eh, cat, cu = '', pr = '', type = 'work') => d7.records.push({ id, start: await at7(sh), end: await at7(eh), type, categoryId: type === 'break' ? null : cat, customer: cu, project: pr, memo: '', todoId: null });
+  await r7('a1', '09:00', '09:25', 'cat1', 'A社', '保守サポート');
+  await r7('a2', '09:25', '11:15', 'cat2', 'A社', '新規提案');
+  await r7('a3', '11:15', '11:30', 'cat1', 'A社', '新規提案');
+  await r7('a4', '11:30', '12:30', null, '', '', 'break');
+  await r7('a5', '13:00', '14:00', 'cat4', '社内', '定例会議');
+  await r7('a6', '14:00', '14:12', 'cat1');
+  await r7('a7', '14:12', '15:30', 'cat5', 'B社', '');
+  await p7.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [KEY, d7]);
+  await p7.reload();
+  await p7.click('.tab[data-screen="report"]');
+  const aggRows = () => p7.$$eval('#aggTable tbody tr:not(.agg-sub):not(.agg-total)', (trs) => trs.map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]));
+  let rows7 = await aggRows();
+  check('顧客・案件ごとに合計（長い順・なしは最後）', JSON.stringify(rows7) === JSON.stringify([['A社／新規提案', '2.00h'], ['B社／（案件なし）', '1.25h'], ['社内／定例会議', '1.00h'], ['A社／保守サポート', '0.50h'], ['⚠ 顧客・案件なし', '0.25h']]), JSON.stringify(rows7));
+  check('休憩は含まない', !(await p7.textContent('#aggTable')).includes('休憩'));
+  check('合計と実際の合計', (await p7.textContent('#aggTable .agg-total')).includes('5.00h') && (await p7.textContent('#aggDiff')).includes('5時間0分') && (await p7.textContent('#aggDiff')).includes('差 0分'));
+  check('丸め方を表示', (await p7.textContent('#aggRule')) === '0.25h単位・四捨五入');
+  check('作業の内訳を表示', (await p7.textContent('#aggTable .agg-sub')).includes('資料作成 1:50') && (await p7.textContent('#aggTable .agg-sub')).includes('電話対応 0:15'));
+  // コピー
+  await p7.click('#aggTable tbody tr >> nth=0 >> button');
+  check('行のコピーは時間の数値だけ', (await p7.evaluate(() => navigator.clipboard.readText())) === '2.00');
+  check('コピー済と表示', (await p7.textContent('#aggTable tbody tr >> nth=0 >> button')) === '✓ コピー済');
+  await p7.click('#aggCopy');
+  const tsv = await p7.evaluate(() => navigator.clipboard.readText());
+  check('表のコピーはタブ区切り（顧客・案件・時間）', tsv === 'A社\t新規提案\t2.00\r\nB社\t\t1.25\r\n社内\t定例会議\t1.00\r\nA社\t保守サポート\t0.50\r\n\t\t0.25\r\n', JSON.stringify(tsv));
+  // 日報テキスト
+  const txt7 = await p7.inputValue('#repText');
+  check('日報テキストに顧客・案件別の合計', txt7.includes('■顧客・案件別\nA社／新規提案　2.00h\nB社　1.25h\n社内／定例会議　1.00h\nA社／保守サポート　0.50h\n（顧客・案件なし）　0.25h\n合計　5.00h'), txt7);
+  check('これまでの合計の行は変わらない', txt7.includes('合計 5.0h：資料作成 1.8h／顧客訪問 1.3h／会議 1.0h／電話対応 0.9h'));
+  // 顧客・案件なしの記録へ入力
+  await p7.click('#aggTable tr.is-empty button');
+  check('「入力」でその記録の顧客欄へ', await p7.evaluate(() => document.activeElement.dataset.fk === 'list-a6-cust'));
+  await p7.screenshot({ path: path.join(SHOT_DIR, 'agg-report.png'), fullPage: true });
+
+  // 設定の変更
+  await goSetting(p7, 'agg');
+  await p7.screenshot({ path: path.join(SHOT_DIR, 'agg-settings.png'), fullPage: true });
+  await p7.click('[data-fk="agg-set-aggUnit-30"]');
+  await p7.click('.tab[data-screen="report"]');
+  rows7 = await aggRows();
+  check('0.5h単位・合計を丸める', rows7[0][1] === '2.0h' && rows7[1][1] === '1.5h', JSON.stringify(rows7));
+  await goSetting(p7, 'agg');
+  await p7.click('[data-fk="agg-set-aggRoundPer-record"]');
+  await p7.click('.tab[data-screen="report"]');
+  check('記録1件ごとに丸める（110分→2.0h・15分→0.5h で 2.5h）', (await aggRows())[0][1] === '2.5h');
+  await goSetting(p7, 'agg');
+  await p7.click('[data-fk="agg-set-aggRoundPer-group"]');
+  await p7.click('[data-fk="agg-set-aggUnit-6"]');
+  await p7.click('[data-fk="agg-set-aggRounding-floor"]');
+  await p7.click('[data-fk="agg-set-aggFormat-hm"]');
+  await p7.click('.tab[data-screen="report"]');
+  rows7 = await aggRows();
+  check('0.1h単位・切り捨て・2:15形式', rows7[0][1] === '2:00' && rows7[1][1] === '1:18' && (await p7.textContent('#aggRule')) === '0.1h単位・切り捨て', JSON.stringify(rows7));
+  await goSetting(p7, 'agg');
+  await p7.click('[data-fk="agg-set-aggUnit-15"]');
+  await p7.click('[data-fk="agg-set-aggRounding-round"]');
+  await p7.click('[data-fk="agg-set-aggFormat-hours"]');
+  await p7.click('[data-fk="agg-set-aggGroupBy-cpc"]');
+  await p7.click('.tab[data-screen="report"]');
+  rows7 = await aggRows();
+  check('顧客＋案件＋作業でまとめる', rows7.length === 6 && rows7.some((r) => r[0] === 'A社／新規提案（資料作成）'), JSON.stringify(rows7));
+  await p7.click('#aggCopy');
+  check('作業ありの表は4列', (await p7.evaluate(() => navigator.clipboard.readText())).split('\r\n')[0].split('\t').length === 4);
+  await goSetting(p7, 'agg');
+  await p7.click('[data-fk="agg-set-aggGroupBy-cp"]');
+  await p7.uncheck('#aggInReport');
+  await p7.click('.tab[data-screen="report"]');
+  check('日報テキストに入れない設定', !(await p7.inputValue('#repText')).includes('■顧客・案件別'));
+  // 期間のCSV
+  await goSetting(p7, 'export');
+  await p7.fill('#aggFrom', today);
+  await p7.fill('#aggTo', today);
+  const [dl7] = await Promise.all([p7.waitForEvent('download'), p7.click('#aggCsv')]);
+  const csv7 = fs.readFileSync(await dl7.path(), 'utf8');
+  check('顧客・案件別のCSV（日ごと）', csv7.startsWith('﻿日付,顧客,案件,時間,分\r\n') && csv7.includes(`${today},A社,新規提案,2.00,125`), csv7);
+  await p7.click('#aggModeTotal');
+  const [dl7b] = await Promise.all([p7.waitForEvent('download'), p7.click('#aggCsv')]);
+  const csv7b = fs.readFileSync(await dl7b.path(), 'utf8');
+  check('顧客・案件別のCSV（期間の合計）', csv7b.startsWith('﻿顧客,案件,時間,分\r\n') && csv7b.includes('B社,,1.25,78'), csv7b);
+  await ctx7.close();
   check('index.html 以外のファイルを読み込んでいない', otherFiles.size === 0, [...otherFiles].join(', '));
   check('ページでJavaScriptエラーが発生していない', errors.length === 0, errors.join(' | '));
   console.log(`\n結果: ${passed} 件成功 / ${failed} 件失敗（スクリーンショット: ${SHOT_DIR}）`);
