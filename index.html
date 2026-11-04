@@ -721,7 +721,8 @@ main { padding: 12px; }
 
 /* ---------- 日報システム用 ---------- */
 .agg-sys { margin-top: 8px; }
-.cat-code { min-height: 32px; padding: 0 2px; font-size: 12px; }
+.cat-travel { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-size: 12px; color: var(--sub); cursor: pointer; }
+.cat-travel input { width: 20px; height: 20px; }
   </style>
 </head>
 <body>
@@ -1106,7 +1107,7 @@ main { padding: 12px; }
         <button type="button" id="tplImportCodes" class="btn">コード一覧を顧客・案件に登録</button>
         <button type="button" id="tplRemove" class="btn btn-small">ひな形の設定を解除</button>
         <p id="tplStatus" class="note" role="status" aria-live="polite"></p>
-        <p class="note">日報画面の「日報システム用のExcelを書き出す」で、このひな形の「work_data」シートに、顧客＋業務＋工程ごとの作業時間・移動時間・備考（メモ）を書き込みます。選択リストや式はそのまま残ります。工程区分・作業工程は「作業ボタン」の設定で作業ごとに決めます。ひな形はこの端末のブラウザに保存されます。</p>
+        <p class="note">日報画面の「日報システム用のExcelを書き出す」で、このひな形の「work_data」シートに、顧客＋業務ごとの作業時間・移動時間・備考（メモ）を書き込みます。工程区分・作業工程は空欄にします。選択リストや式はそのまま残ります。移動の作業は「作業ボタン」の設定で「移動時間として書き出す」にチェックします。ひな形はこの端末のブラウザに保存されます。</p>
       </section>
     </section>
 
@@ -1306,7 +1307,7 @@ function button(label, onClick, className = 'btn') {
 function defaultState() {
   return {
     version: DATA_VERSION,
-    categories: DEFAULT_CATEGORY_NAMES.map((name, i) => ({ id: `cat${i + 1}`, name, deleted: false, kubun: '', sagyo: '', travel: false })),
+    categories: DEFAULT_CATEGORY_NAMES.map((name, i) => ({ id: `cat${i + 1}`, name, deleted: false, travel: false })),
     customers: [],
     projects: [],
     records: [],
@@ -1333,8 +1334,8 @@ function migrate(raw) {
   // 省略された項目を補う
   const str = (v) => (typeof v === 'string' ? v : '');
   const code = (v) => (typeof v === 'number' ? String(v) : str(v).trim());
-  // 工程区分・作業工程・移動時間の印と、顧客・案件のコードは日報システム用（無ければ空）
-  d.categories = (d.categories || []).map((c) => ({ id: c.id, name: str(c.name), deleted: !!c.deleted, kubun: code(c.kubun), sagyo: code(c.sagyo), travel: !!c.travel }));
+  // 移動時間の印と、顧客・案件のコードは日報システム用（無ければ空）
+  d.categories = (d.categories || []).map((c) => ({ id: c.id, name: str(c.name), deleted: !!c.deleted, travel: !!c.travel }));
   d.customers = (d.customers || []).map((c) => ({ id: c.id, name: str(c.name), hidden: !!c.hidden, code: code(c.code) }));
   d.projects = (d.projects || []).map((p) => ({ id: p.id, customerId: p.customerId, name: str(p.name), hidden: !!p.hidden, code: code(p.code) }));
   d.records = (d.records || []).map((r) => ({
@@ -3500,10 +3501,15 @@ function renderSettings() {
     const nameBox = el('div', 'cat-name');
     nameBox.append(name);
     const running = run && run.type === 'work' && run.categoryId === c.id;
-    const codeBtn = button(categoryCodeLabel(c), () => editCategoryCodes(c), 'link-btn cat-code');
-    codeBtn.setAttribute('aria-label', `「${c.name}」の工程区分・作業工程（${categoryCodeLabel(c)}）`);
-    codeBtn.dataset.fk = `cat-code-${c.id}`;
-    nameBox.append(codeBtn);
+    const travelLab = el('label', 'cat-travel');
+    const travel = el('input');
+    travel.type = 'checkbox';
+    travel.checked = !!c.travel;
+    travel.dataset.fk = `cat-travel-${c.id}`;
+    travel.setAttribute('aria-label', `「${c.name}」を移動時間として書き出す`);
+    travel.addEventListener('change', () => { c.travel = travel.checked; save(); scheduleRender(); });
+    travelLab.append(travel, document.createTextNode('移動時間として書き出す'));
+    nameBox.append(travelLab);
     if (running) nameBox.append(el('span', 'cat-running', '● 実行中のため削除できません'));
     const usage = el('span', 'cat-usage', `30日：${use.get(c.id) || 0}回`);
     const up = button('↑', () => moveCategory(c, -1), 'btn btn-icon');
@@ -3542,7 +3548,7 @@ function initSettingsScreen() {
     const n = input.value.trim();
     if (!n) return;
     if (activeCategories().some((c) => norm(c.name) === norm(n))) { await alertDialog('追加できません', `『${n}』はすでにあります。`); return; }
-    state.categories.push({ id: uid(), name: n, deleted: false, kubun: '', sagyo: '', travel: n.includes('移動') });
+    state.categories.push({ id: uid(), name: n, deleted: false, travel: n.includes('移動') });
     input.value = '';
     save();
     renderAll();
@@ -4741,6 +4747,8 @@ const WORK_COLS = {
   custCode: ['顧客コード'], custName: ['顧客名(選択)', '顧客名'], projCode: ['業務コード'], projName: ['業務名(選択)', '業務名'],
   kubun: ['工程区分'], sagyo: ['作業工程'], work: ['作業時間'], travel: ['移動時間'], note: ['備考'],
 };
+// 工程区分・作業工程は使わない（列があれば空欄にする）
+const OPTIONAL_WORK_COLS = ['kubun', 'sagyo'];
 const CODE_COLS = { custCode: ['顧客コード'], projCode: ['業務コード'], custName: ['顧客名'], projName: ['業務名'] };
 
 /** ひな形を調べて、取り込み用シートとコード一覧を読み取る */
@@ -4751,7 +4759,7 @@ async function inspectTemplate(buf) {
   const workDoc = parseXml(book.map.get(work.path).data);
   const wv = readSheetValues(workDoc, book.shared);
   const cols = findColumns(wv.get(1) || {}, WORK_COLS);
-  const missing = Object.keys(WORK_COLS).filter((k) => !cols[k]);
+  const missing = Object.keys(WORK_COLS).filter((k) => !cols[k] && !OPTIONAL_WORK_COLS.includes(k));
   if (missing.length) throw new Error(`見出しが見つかりません：${missing.map((k) => WORK_COLS[k][0]).join('、')}`);
   const codes = [];
   const codeSheet = book.sheets.find((s) => s.name === 'コード一覧');
@@ -4842,7 +4850,7 @@ function timeStyleId(book) {
 
 /**
  * ひな形の取り込み用シートに行を書き込み、新しい xlsx（Blob）を返す。
- * rows: [{ custCode, custName, projCode, projName, kubun, sagyo, workMin, travelMin, note }]
+ * rows: [{ custCode, custName, projCode, projName, workMin, travelMin, note }]
  */
 async function fillTemplate(buf, rows) {
   const t = await inspectTemplate(buf);
@@ -4870,6 +4878,7 @@ async function fillTemplate(buf, rows) {
     const rowEl = getRowEl(doc, sheetData, r);
     const d = rows[r - 2];
     for (const key of Object.keys(WORK_COLS)) {
+      if (!cols[key]) continue;
       const c = getCellEl(doc, rowEl, cols[key], r);
       const timeKey = key === 'work' || key === 'travel';
       if (d) {
@@ -4878,8 +4887,6 @@ async function fillTemplate(buf, rows) {
         else if (key === 'custName') v = d.custName;
         else if (key === 'projCode') v = num(d.projCode);
         else if (key === 'projName') v = d.projName;
-        else if (key === 'kubun') v = num(d.kubun);
-        else if (key === 'sagyo') v = num(d.sagyo);
         else if (key === 'work') v = d.workMin ? d.workMin / 1440 : '';
         else if (key === 'travel') v = d.travelMin ? d.travelMin / 1440 : '';
         else if (key === 'note') v = d.note;
@@ -4961,7 +4968,7 @@ function importTemplateCodes() {
   flashStatus($('#tplStatus'), `✓ 顧客 ${addC}件・案件 ${addP}件を登録しました${upd ? `（コードの更新 ${upd}件）` : ''}。`);
 }
 
-/** その日の記録を、日報システムの行（顧客＋業務＋工程ごと）にまとめる */
+/** その日の記録を、日報システムの行（顧客＋業務ごと）にまとめる */
 function buildSystemRows(key, codes, now = Date.now()) {
   const agg = state.settings.agg;
   const clean = (v) => String(v || '').replace(/\s*[\r\n]+\s*/g, ' ').trim();
@@ -4977,9 +4984,7 @@ function buildSystemRows(key, codes, now = Date.now()) {
     };
   };
   const groups = new Map();
-  const travels = new Map();
-  const warn = { noCode: new Set(), unknown: new Set(), running: false };
-  const put = (map, k, init) => { if (!map.has(k)) map.set(k, init()); return map.get(k); };
+  const warn = { unknown: new Set(), running: false };
   for (const r of recordsOfDate(key)) {
     if (r.type !== 'work') continue;
     if (r.end == null) warn.running = true;
@@ -4988,32 +4993,22 @@ function buildSystemRows(key, codes, now = Date.now()) {
     const projName = clean(r.project);
     const m = recordMinutes(r, now);
     const memo = clean(r.memo);
-    if (custName && !codeOf(custName, projName).known && codes.length) warn.unknown.add(projName ? `${custName}／${projName}` : custName);
-    if (cat && cat.travel) {
-      const t = put(travels, `${norm(custName)}|${norm(projName)}`, () => ({ custName, projName, cat, minutes: 0, roundedSum: 0, memos: [] }));
-      t.minutes += m; t.roundedSum += roundAggMinutes(m); if (memo && !t.memos.includes(memo)) t.memos.push(memo);
-      continue;
-    }
-    if (!cat || cat.kubun === '' || cat.sagyo === '') warn.noCode.add(cat ? cat.name : '（不明な作業）');
-    const k = `${norm(custName)}|${norm(projName)}|${cat ? cat.kubun : ''}|${cat ? cat.sagyo : ''}`;
-    const g = put(groups, k, () => ({ custName, projName, kubun: cat ? cat.kubun : '', sagyo: cat ? cat.sagyo : '', minutes: 0, roundedSum: 0, memos: [], travelMin: 0 }));
-    g.minutes += m; g.roundedSum += roundAggMinutes(m); if (memo && !g.memos.includes(memo)) g.memos.push(memo);
+    if (custName && codes.length && !codeOf(custName, projName).known) warn.unknown.add(projName ? `${custName}／${projName}` : custName);
+    const k = `${norm(custName)}|${norm(projName)}`;
+    if (!groups.has(k)) groups.set(k, { custName, projName, work: 0, workR: 0, travel: 0, travelR: 0, memos: [] });
+    const g = groups.get(k);
+    // 「移動時間として書き出す」作業は、同じ顧客・業務の行の移動時間に入れる
+    if (cat && cat.travel) { g.travel += m; g.travelR += roundAggMinutes(m); } else { g.work += m; g.workR += roundAggMinutes(m); }
+    if (memo && !g.memos.includes(memo)) g.memos.push(memo);
   }
-  const fin = (x) => (agg.roundPer === 'record' ? x.roundedSum : roundAggMinutes(x.minutes));
-  const rows = [...groups.values()].map((g) => ({ ...g, workMin: fin(g) }));
-  // 移動時間は、同じ顧客・業務の行（作業時間が一番長い行）に入れる。無ければ移動だけの行を作る
-  for (const t of travels.values()) {
-    const same = rows.filter((x) => norm(x.custName) === norm(t.custName) && norm(x.projName) === norm(t.projName)).sort((a, b) => b.workMin - a.workMin)[0];
-    if (same) { same.travelMin += fin(t); for (const m of t.memos) if (!same.memos.includes(m)) same.memos.push(m); }
-    else {
-      if (t.cat.kubun === '' || t.cat.sagyo === '') warn.noCode.add(t.cat.name);
-      rows.push({ custName: t.custName, projName: t.projName, kubun: t.cat.kubun, sagyo: t.cat.sagyo, minutes: 0, workMin: 0, travelMin: fin(t), memos: t.memos });
-    }
-  }
-  const out = rows.map((x) => ({ ...codeOf(x.custName, x.projName), custName: x.custName, projName: x.projName, kubun: x.kubun, sagyo: x.sagyo, workMin: x.workMin, travelMin: x.travelMin, note: x.memos.join('、') }));
+  const fin = (raw, rounded) => (agg.roundPer === 'record' ? rounded : roundAggMinutes(raw));
+  const out = [...groups.values()].map((g) => ({
+    ...codeOf(g.custName, g.projName), custName: g.custName, projName: g.projName,
+    workMin: fin(g.work, g.workR), travelMin: fin(g.travel, g.travelR), note: g.memos.join('、'),
+  }));
   const n = (v) => (v === '' ? Infinity : Number(v) || Infinity);
-  out.sort((a, b) => (a.custName ? 0 : 1) - (b.custName ? 0 : 1) || n(a.custCode) - n(b.custCode) || a.custName.localeCompare(b.custName, 'ja')
-    || n(a.projCode) - n(b.projCode) || n(a.kubun) - n(b.kubun) || n(a.sagyo) - n(b.sagyo));
+  out.sort((a, b) => (a.custName ? 0 : 1) - (b.custName ? 0 : 1) || n(a.custCode) - n(b.custCode)
+    || a.custName.localeCompare(b.custName, 'ja') || n(a.projCode) - n(b.projCode) || a.projName.localeCompare(b.projName, 'ja'));
   return { rows: out.filter((x) => x.workMin || x.travelMin), warn };
 }
 async function exportSystemExcel() {
@@ -5027,7 +5022,6 @@ async function exportSystemExcel() {
   const { rows, warn } = buildSystemRows(reportDate, tpl.codes || []);
   if (!rows.length) { await alertDialog('書き出せません', 'この日の作業の記録がありません。'); return; }
   const notes = [];
-  if (warn.noCode.size) notes.push(`・工程区分・作業工程が未設定の作業：${[...warn.noCode].join('、')}（作業ボタン設定で設定できます）`);
   if (warn.unknown.size) notes.push(`・コード一覧にない顧客・業務：${[...warn.unknown].join('、')}（コードは空欄、または Excel の式で引きます）`);
   if (warn.running) notes.push('・計測中の記録があります（現在時刻までの時間で書き出します）');
   if (notes.length) {
@@ -5048,50 +5042,6 @@ async function exportSystemExcel() {
   } catch (e) {
     await alertDialog('書き出せません', `Excel ファイルを作れませんでした。\n理由：${e.message || e.name}`);
   }
-}
-
-/* ----- 作業ボタンの工程区分・作業工程 ----- */
-async function editCategoryCodes(c) {
-  const wrap = el('div', 'stack');
-  const mk = (id, label, value) => {
-    const box = el('div', 'field');
-    const lab = el('label', null, label);
-    lab.htmlFor = id;
-    const i = el('input');
-    i.type = 'text';
-    i.inputMode = 'numeric';
-    i.id = id;
-    i.value = value;
-    i.autocomplete = 'off';
-    box.append(lab, i);
-    wrap.append(box);
-    return i;
-  };
-  const k = mk('codeKubun', '工程区分', c.kubun);
-  const sgy = mk('codeSagyo', '作業工程', c.sagyo);
-  const lab = el('label', 'check-label');
-  const chk = el('input');
-  chk.type = 'checkbox';
-  chk.checked = !!c.travel;
-  lab.append(chk, document.createTextNode(' 移動時間として書き出す'));
-  wrap.append(lab, el('p', 'note', '移動時間にすると、記録に入れた顧客・業務の行の「移動時間」に入れます。'));
-  const ok = await openDialog({
-    title: `「${c.name}」の工程`, content: wrap, cancelValue: false,
-    buttons: [{ label: 'キャンセル', value: false }, {
-      label: '保存', value: true, primary: true,
-      validate: () => ([k.value, sgy.value].some((v) => v.trim() && !/^\d+$/.test(v.trim())) ? '番号は数字で入力してください。' : null),
-    }],
-  });
-  if (!ok) return;
-  c.kubun = k.value.trim();
-  c.sagyo = sgy.value.trim();
-  c.travel = chk.checked;
-  save();
-  renderAll();
-}
-function categoryCodeLabel(c) {
-  const code = c.kubun !== '' || c.sagyo !== '' ? `${c.kubun || '?'}-${c.sagyo || '?'}` : '未設定';
-  return `工程 ${code}${c.travel ? '・移動時間' : ''}`;
 }
 
 function renderTemplateSettings() {

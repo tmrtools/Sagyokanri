@@ -1022,20 +1022,17 @@ wb.save(sys.argv[1])
   const sc = d8.customers.find((c) => c.name === 'サンプル商事');
   check('コード一覧を顧客・案件に登録（コード付き）', d8.customers.length === 4 && sc && sc.code === '2070' && d8.projects.find((x) => x.name === '在庫システム改修').code === '1102');
   check('ひな形の設定を表示', (await p8.textContent('#tplInfo')).includes('work_data_template.xlsx'));
-  // 作業ボタンに工程を設定（1件は画面から）
+  // 作業ボタン：移動時間として書き出す
   await goSetting(p8, 'buttons');
-  await p8.click('[data-fk="cat-code-cat1"]');
-  await p8.fill('#codeKubun', '9');
-  await p8.fill('#codeSagyo', '80');
-  await p8.click('#dialog[open] #dialogButtons button >> text=保存');
-  check('作業ボタンに工程区分・作業工程を設定', (await p8.textContent('[data-fk="cat-code-cat1"]')) === '工程 9-80');
+  check('工程区分・作業工程の入力は出さない', !(await p8.textContent('#catList')).includes('工程'));
+  await p8.check('[data-fk="cat-travel-cat5"]');
+  check('「移動時間として書き出す」を設定できる', (await st8()).categories.find((c) => c.id === 'cat5').travel === true);
+  await p8.uncheck('[data-fk="cat-travel-cat5"]');
   await p8.fill('#catAddName', '移動');
   await p8.press('#catAddName', 'Enter');
   d8 = await st8();
   const mv = d8.categories.find((c) => c.name === '移動');
   check('「移動」の作業は移動時間として扱う', mv && mv.travel === true);
-  const set = (id, k, sgy) => { const c = d8.categories.find((x) => x.id === id); c.kubun = k; c.sagyo = sgy; };
-  set('cat2', '1', '11'); set('cat3', '3', '20'); set('cat4', '1', '10'); set(mv.id, '9', '90');
   const at8 = (hm) => p8.evaluate(([k, t]) => combine(k, t), [today, hm]);
   const rec8 = async (id, s1, e1, cat, cu, pr, memo) => ({ id, start: await at8(s1), end: await at8(e1), type: 'work', categoryId: cat, customer: cu, project: pr, memo, todoId: null });
   d8.records = [
@@ -1054,7 +1051,7 @@ wb.save(sys.argv[1])
   await p8.click('#sysExport');
   await p8.waitForSelector('#dialog[open]');
   const warn8 = await p8.textContent('#dialogMessage');
-  check('コード一覧にない顧客を確認', warn8.includes('Z社'));
+  check('コード一覧にない顧客を確認', warn8.includes('Z社') && !warn8.includes('工程'));
   const [dl8] = await Promise.all([p8.waitForEvent('download'), p8.click('#dialog[open] #dialogButtons button >> text=このまま書き出す')]);
   check('ファイル名は work_data＋日付', dl8.suggestedFilename() === `work_data${today.replace(/-/g, '')}.xlsx`, dl8.suggestedFilename());
   const outPath = path.join(tdir, 'out.xlsx');
@@ -1079,11 +1076,11 @@ print(json.dumps({
   console.log(`      ${JSON.stringify(res8.rows)}`);
   const R = res8.rows;
   check('ひな形のシート・見出しを保つ', res8.sheets.join(',') === 'work_data,コード一覧,勤務時間' && res8.hidden === 'hidden' && res8.head[1] === '顧客名(選択)');
-  check('1行目：顧客＋業務＋工程で合計（15分単位で丸め、メモは備考）', JSON.stringify(R[0]) === JSON.stringify([2070, 'サンプル商事', 1058, '販売管理システム（2026保守）', 9, 80, '2:00', null, '問合せ対応']), JSON.stringify(R[0]));
-  check('同じ顧客の別の業務は別の行（2:25→2:30）', JSON.stringify(R[1]) === JSON.stringify([2070, 'サンプル商事', 1102, '在庫システム改修', 3, 20, '2:30', null, null]), JSON.stringify(R[1]));
-  check('移動時間は同じ顧客・業務の行に入る', JSON.stringify(R[2]) === JSON.stringify([3100, 'テスト工業', 2001, '生産管理システム構築', 1, 10, '1:30', '1:00', '定例会議']), JSON.stringify(R[2]));
+  check('1行目：顧客＋業務で合計（15分単位で丸め、工程は空欄、メモは備考）', JSON.stringify(R[0]) === JSON.stringify([2070, 'サンプル商事', 1058, '販売管理システム（2026保守）', null, null, '2:00', null, '問合せ対応']), JSON.stringify(R[0]));
+  check('同じ顧客の別の業務は別の行（2:25→2:30）', JSON.stringify(R[1]) === JSON.stringify([2070, 'サンプル商事', 1102, '在庫システム改修', null, null, '2:30', null, null]), JSON.stringify(R[1]));
+  check('移動時間は同じ顧客・業務の行に入る', JSON.stringify(R[2]) === JSON.stringify([3100, 'テスト工業', 2001, '生産管理システム構築', null, null, '1:30', '1:00', '定例会議']), JSON.stringify(R[2]));
   check('コード一覧にない顧客はコードを式で引く', typeof R[3][0] === 'string' && R[3][0].startsWith('=IFERROR') && R[3][1] === 'Z社' && R[3][6] === '0:30' && R[3][8] === '新規の問合せ 折り返し', JSON.stringify(R[3]));
-  check('顧客・業務なしの行は最後', JSON.stringify(R[4]) === JSON.stringify([null, null, null, null, 1, 11, '1:00', null, '週報作成']) || (String(R[4][0]).startsWith('=IFERROR') && R[4][1] === null && R[4][4] === 1 && R[4][6] === '1:00' && R[4][8] === '週報作成'), JSON.stringify(R[4]));
+  check('顧客・業務なしの行は最後', String(R[4][0]).startsWith('=IFERROR') && R[4][1] === null && R[4][4] === null && R[4][6] === '1:00' && R[4][8] === '週報作成', JSON.stringify(R[4]));
   check('休憩は書き出さない・見本の行は消える', R[5][1] == null && R[5][6] == null && !JSON.stringify(R).includes('見本の行'));
   check('時間の書式（h:mm）を保つ', res8.fmt === 'h:mm' && res8.fmtH === 'h:mm', `${res8.fmt} ${res8.fmtH}`);
   check('使わない行の式を保つ', String(res8.a10).startsWith('=IFERROR(INDEX(コード一覧!$B:$B,MATCH(B10,') && String(res8.c10).includes('B10&"|"&D10'));
