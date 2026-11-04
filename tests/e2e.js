@@ -891,7 +891,7 @@ function check(name, cond, detail = '') {
   await p7.goto(URL);
   const st7 = () => p7.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
   const d7 = await st7();
-  check('集計のしかたの初期値（0.25h・四捨五入・顧客＋案件）', d7.settings.agg.unit === 15 && d7.settings.agg.rounding === 'round' && d7.settings.agg.groupBy === 'cp' && d7.settings.agg.inReport === true);
+  check('集計のしかたの初期値（15分・四捨五入・顧客＋案件）', d7.settings.agg.unit === 15 && d7.settings.agg.rounding === 'round' && d7.settings.agg.groupBy === 'cp' && d7.settings.agg.inReport === true);
   const at7 = (hm) => p7.evaluate(([k, t]) => combine(k, t), [today, hm]);
   d7.records = [];
   const r7 = async (id, sh, eh, cat, cu = '', pr = '', type = 'work') => d7.records.push({ id, start: await at7(sh), end: await at7(eh), type, categoryId: type === 'break' ? null : cat, customer: cu, project: pr, memo: '', todoId: null });
@@ -910,7 +910,7 @@ function check(name, cond, detail = '') {
   check('顧客・案件ごとに合計（長い順・なしは最後）', JSON.stringify(rows7) === JSON.stringify([['A社／新規提案', '2.00h'], ['B社／（案件なし）', '1.25h'], ['社内／定例会議', '1.00h'], ['A社／保守サポート', '0.50h'], ['⚠ 顧客・案件なし', '0.25h']]), JSON.stringify(rows7));
   check('休憩は含まない', !(await p7.textContent('#aggTable')).includes('休憩'));
   check('合計と実際の合計', (await p7.textContent('#aggTable .agg-total')).includes('5.00h') && (await p7.textContent('#aggDiff')).includes('5時間0分') && (await p7.textContent('#aggDiff')).includes('差 0分'));
-  check('丸め方を表示', (await p7.textContent('#aggRule')) === '0.25h単位・四捨五入');
+  check('丸め方を表示', (await p7.textContent('#aggRule')) === '15分単位・四捨五入');
   check('作業の内訳を表示', (await p7.textContent('#aggTable .agg-sub')).includes('資料作成 1:50') && (await p7.textContent('#aggTable .agg-sub')).includes('電話対応 0:15'));
   // コピー
   await p7.click('#aggTable tbody tr >> nth=0 >> button');
@@ -941,12 +941,12 @@ function check(name, cond, detail = '') {
   check('記録1件ごとに丸める（110分→2.0h・15分→0.5h で 2.5h）', (await aggRows())[0][1] === '2.5h');
   await goSetting(p7, 'agg');
   await p7.click('[data-fk="agg-set-aggRoundPer-group"]');
-  await p7.click('[data-fk="agg-set-aggUnit-6"]');
+  await p7.click('[data-fk="agg-set-aggUnit-10"]');
   await p7.click('[data-fk="agg-set-aggRounding-floor"]');
   await p7.click('[data-fk="agg-set-aggFormat-hm"]');
   await p7.click('.tab[data-screen="report"]');
   rows7 = await aggRows();
-  check('0.1h単位・切り捨て・2:15形式', rows7[0][1] === '2:00' && rows7[1][1] === '1:18' && (await p7.textContent('#aggRule')) === '0.1h単位・切り捨て', JSON.stringify(rows7));
+  check('10分単位・切り捨て・2:15形式', rows7[0][1] === '2:00' && rows7[1][1] === '1:10' && (await p7.textContent('#aggRule')) === '10分単位・切り捨て', JSON.stringify(rows7));
   await goSetting(p7, 'agg');
   await p7.click('[data-fk="agg-set-aggUnit-15"]');
   await p7.click('[data-fk="agg-set-aggRounding-round"]');
@@ -974,6 +974,130 @@ function check(name, cond, detail = '') {
   const csv7b = fs.readFileSync(await dl7b.path(), 'utf8');
   check('顧客・案件別のCSV（期間の合計）', csv7b.startsWith('﻿顧客,案件,時間,分\r\n') && csv7b.includes('B社,,1.25,78'), csv7b);
   await ctx7.close();
+  // ---------------------------------------------------------------
+  console.log('20. 日報システム用の Excel（ひな形に書き込む）');
+  const tdir = fs.mkdtempSync(path.join(os.tmpdir(), 'sgk-xl-'));
+  const tplPath = path.join(tdir, 'work_data_template.xlsx');
+  // 受け取ったサンプルと同じ形のひな形を作る（work_data・コード一覧（非表示）・勤務時間）
+  execFileSync('python3', ['-I', '-c', `
+import sys, openpyxl
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.styles import Font, PatternFill
+import datetime
+wb = openpyxl.Workbook(); ws = wb.active; ws.title = 'work_data'
+heads = ['顧客コード','顧客名(選択)','業務コード','業務名(選択)','工程区分','作業工程','作業時間','移動時間','備考']
+for i, h in enumerate(heads, 1):
+    c = ws.cell(1, i, h); c.font = Font(bold=True); c.fill = PatternFill('solid', fgColor='DDEEDD')
+ws.append([2070, 'サンプル商事', 1058, '販売管理システム（2026保守）', 9, 80, datetime.time(2, 0), None, '見本の行'])
+for r in range(2, 32):
+    if r > 2:
+        ws.cell(r, 1, f'=IFERROR(INDEX(コード一覧!$B:$B,MATCH(B{r},コード一覧!$D:$D,0)),"")')
+        ws.cell(r, 3, f'=IFERROR(INDEX(コード一覧!$C:$C,MATCH(B{r}&"|"&D{r},コード一覧!$A:$A,0)),"")')
+    ws.cell(r, 7).number_format = 'h:mm'; ws.cell(r, 8).number_format = 'h:mm'
+ws.freeze_panes = 'A2'
+dv1 = DataValidation(type='list', formula1='=コード一覧!$G$2:$G$5', allow_blank=True); dv1.add('B2:B31'); ws.add_data_validation(dv1)
+dv2 = DataValidation(type='list', formula1='=OFFSET(コード一覧!$E$1,MATCH($B2,コード一覧!$D:$D,0)-1,0,COUNTIF(コード一覧!$D:$D,$B2),1)', allow_blank=True); dv2.add('D2:D31'); ws.add_data_validation(dv2)
+cs = wb.create_sheet('コード一覧'); cs.sheet_state = 'hidden'
+cs.append(['結合キー','顧客コード','業務コード','顧客名','業務名',None,'顧客名一覧'])
+rows = [('その他（社内）','社内業務支援（2026）',99999,1371),('サンプル商事','在庫システム改修',2070,1102),('サンプル商事','販売管理システム（2026保守）',2070,1058),('ダミー物流','配送管理（2026保守）',4200,2105),('テスト工業','生産管理システム構築',3100,2001)]
+names = ['その他（社内）','サンプル商事','ダミー物流','テスト工業']
+for i, (cn, pn, cc, pc) in enumerate(rows):
+    cs.append([cn + '|' + pn, cc, pc, cn, pn, None, names[i] if i < len(names) else None])
+kt = wb.create_sheet('勤務時間'); kt.append(['項目','値']); kt.append(['開始時間', datetime.time(8, 30)]); kt.append(['活動日', '2026/11/04'])
+wb.save(sys.argv[1])
+`, tplPath]);
+  const ctx8 = await browser.newContext({ viewport: { width: 360, height: 900 }, locale: 'ja-JP', acceptDownloads: true });
+  const p8 = await ctx8.newPage();
+  p8.on('pageerror', (e) => errors.push(e.message));
+  await p8.goto(URL);
+  const st8 = () => p8.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY);
+  // ひな形を設定し、コード一覧を顧客・案件に登録
+  await goSetting(p8, 'agg');
+  await p8.setInputFiles('#tplInput', tplPath);
+  await p8.waitForSelector('#dialog[open]');
+  check('ひな形のコード一覧の件数を表示', (await p8.textContent('#dialogMessage')).includes('5 件'));
+  await p8.click('#dialog[open] #dialogButtons button >> text=登録する');
+  await p8.waitForTimeout(100);
+  let d8 = await st8();
+  const sc = d8.customers.find((c) => c.name === 'サンプル商事');
+  check('コード一覧を顧客・案件に登録（コード付き）', d8.customers.length === 4 && sc && sc.code === '2070' && d8.projects.find((x) => x.name === '在庫システム改修').code === '1102');
+  check('ひな形の設定を表示', (await p8.textContent('#tplInfo')).includes('work_data_template.xlsx'));
+  // 作業ボタンに工程を設定（1件は画面から）
+  await goSetting(p8, 'buttons');
+  await p8.click('[data-fk="cat-code-cat1"]');
+  await p8.fill('#codeKubun', '9');
+  await p8.fill('#codeSagyo', '80');
+  await p8.click('#dialog[open] #dialogButtons button >> text=保存');
+  check('作業ボタンに工程区分・作業工程を設定', (await p8.textContent('[data-fk="cat-code-cat1"]')) === '工程 9-80');
+  await p8.fill('#catAddName', '移動');
+  await p8.press('#catAddName', 'Enter');
+  d8 = await st8();
+  const mv = d8.categories.find((c) => c.name === '移動');
+  check('「移動」の作業は移動時間として扱う', mv && mv.travel === true);
+  const set = (id, k, sgy) => { const c = d8.categories.find((x) => x.id === id); c.kubun = k; c.sagyo = sgy; };
+  set('cat2', '1', '11'); set('cat3', '3', '20'); set('cat4', '1', '10'); set(mv.id, '9', '90');
+  const at8 = (hm) => p8.evaluate(([k, t]) => combine(k, t), [today, hm]);
+  const rec8 = async (id, s1, e1, cat, cu, pr, memo) => ({ id, start: await at8(s1), end: await at8(e1), type: 'work', categoryId: cat, customer: cu, project: pr, memo, todoId: null });
+  d8.records = [
+    await rec8('x1', '09:00', '10:00', 'cat1', 'サンプル商事', '販売管理システム（2026保守）', '問合せ対応'),
+    await rec8('x2', '10:00', '10:58', 'cat1', 'サンプル商事', '販売管理システム（2026保守）', '問合せ対応'),
+    await rec8('x3', '11:00', '13:25', 'cat3', 'サンプル商事', '在庫システム改修', ''),
+    await rec8('x4', '13:30', '14:30', mv.id, 'テスト工業', '生産管理システム構築', ''),
+    await rec8('x5', '14:30', '16:00', 'cat4', 'テスト工業', '生産管理システム構築', '定例会議'),
+    await rec8('x6', '16:00', '17:00', 'cat2', '', '', '週報作成'),
+    await rec8('x7', '17:00', '17:30', 'cat1', 'Z社', '', '新規の問合せ\n折り返し'),
+    { id: 'x8', start: await at8('12:00'), end: await at8('13:00'), type: 'break', categoryId: null, customer: '', project: '', memo: '', todoId: null },
+  ];
+  await p8.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [KEY, d8]);
+  await p8.reload();
+  await p8.click('.tab[data-screen="report"]');
+  await p8.click('#sysExport');
+  await p8.waitForSelector('#dialog[open]');
+  const warn8 = await p8.textContent('#dialogMessage');
+  check('コード一覧にない顧客を確認', warn8.includes('Z社'));
+  const [dl8] = await Promise.all([p8.waitForEvent('download'), p8.click('#dialog[open] #dialogButtons button >> text=このまま書き出す')]);
+  check('ファイル名は work_data＋日付', dl8.suggestedFilename() === `work_data${today.replace(/-/g, '')}.xlsx`, dl8.suggestedFilename());
+  const outPath = path.join(tdir, 'out.xlsx');
+  await dl8.saveAs(outPath);
+  const res8 = JSON.parse(execFileSync('python3', ['-I', '-c', `
+import sys, json, openpyxl
+wb = openpyxl.load_workbook(sys.argv[1])
+ws = wb['work_data']
+def v(c):
+    x = c.value
+    if hasattr(x, 'hour'): return f'{x.hour}:{x.minute:02d}'
+    return x
+rows = [[v(ws.cell(r, c)) for c in range(1, 10)] for r in range(2, 9)]
+print(json.dumps({
+  'sheets': wb.sheetnames, 'hidden': wb['コード一覧'].sheet_state, 'rows': rows,
+  'fmt': ws['G2'].number_format, 'fmtH': ws['H4'].number_format,
+  'a10': ws['A10'].value, 'c10': ws['C10'].value,
+  'dv': [str(d.sqref) for d in ws.data_validations.dataValidation],
+  'kintai': wb['勤務時間']['B3'].value, 'head': [ws.cell(1, c).value for c in range(1, 10)],
+}, ensure_ascii=False, default=str))
+`, outPath]).toString());
+  console.log(`      ${JSON.stringify(res8.rows)}`);
+  const R = res8.rows;
+  check('ひな形のシート・見出しを保つ', res8.sheets.join(',') === 'work_data,コード一覧,勤務時間' && res8.hidden === 'hidden' && res8.head[1] === '顧客名(選択)');
+  check('1行目：顧客＋業務＋工程で合計（15分単位で丸め、メモは備考）', JSON.stringify(R[0]) === JSON.stringify([2070, 'サンプル商事', 1058, '販売管理システム（2026保守）', 9, 80, '2:00', null, '問合せ対応']), JSON.stringify(R[0]));
+  check('同じ顧客の別の業務は別の行（2:25→2:30）', JSON.stringify(R[1]) === JSON.stringify([2070, 'サンプル商事', 1102, '在庫システム改修', 3, 20, '2:30', null, null]), JSON.stringify(R[1]));
+  check('移動時間は同じ顧客・業務の行に入る', JSON.stringify(R[2]) === JSON.stringify([3100, 'テスト工業', 2001, '生産管理システム構築', 1, 10, '1:30', '1:00', '定例会議']), JSON.stringify(R[2]));
+  check('コード一覧にない顧客はコードを式で引く', typeof R[3][0] === 'string' && R[3][0].startsWith('=IFERROR') && R[3][1] === 'Z社' && R[3][6] === '0:30' && R[3][8] === '新規の問合せ 折り返し', JSON.stringify(R[3]));
+  check('顧客・業務なしの行は最後', JSON.stringify(R[4]) === JSON.stringify([null, null, null, null, 1, 11, '1:00', null, '週報作成']) || (String(R[4][0]).startsWith('=IFERROR') && R[4][1] === null && R[4][4] === 1 && R[4][6] === '1:00' && R[4][8] === '週報作成'), JSON.stringify(R[4]));
+  check('休憩は書き出さない・見本の行は消える', R[5][1] == null && R[5][6] == null && !JSON.stringify(R).includes('見本の行'));
+  check('時間の書式（h:mm）を保つ', res8.fmt === 'h:mm' && res8.fmtH === 'h:mm', `${res8.fmt} ${res8.fmtH}`);
+  check('使わない行の式を保つ', String(res8.a10).startsWith('=IFERROR(INDEX(コード一覧!$B:$B,MATCH(B10,') && String(res8.c10).includes('B10&"|"&D10'));
+  check('選択リストを保つ', res8.dv.includes('B2:B31') && res8.dv.includes('D2:D31'), res8.dv.join(','));
+  check('勤務時間シートはそのまま', res8.kintai === '2026/11/04');
+  // 30分単位にすると丸めが変わる
+  await goSetting(p8, 'agg');
+  await p8.click('[data-fk="agg-set-aggUnit-30"]');
+  const rows8 = await p8.evaluate(() => buildSystemRows(reportDate, []).rows.map((r) => r.workMin));
+  check('時間の単位の設定がExcelにも効く（30分単位）', JSON.stringify(rows8) === JSON.stringify([120, 150, 90, 30, 60]), JSON.stringify(rows8));
+  await p8.screenshot({ path: path.join(SHOT_DIR, 'sys-settings.png'), fullPage: true });
+  await goSetting(p8, 'buttons');
+  await p8.screenshot({ path: path.join(SHOT_DIR, 'sys-buttons.png'), fullPage: true });
+  await ctx8.close();
   check('index.html 以外のファイルを読み込んでいない', otherFiles.size === 0, [...otherFiles].join(', '));
   check('ページでJavaScriptエラーが発生していない', errors.length === 0, errors.join(' | '));
   console.log(`\n結果: ${passed} 件成功 / ${failed} 件失敗（スクリーンショット: ${SHOT_DIR}）`);

@@ -561,9 +561,12 @@ main { padding: 12px; }
   margin: 4px 0;
 }
 @media (max-width: 520px) {
-  .cat-item { grid-template-columns: 30px minmax(0, 1fr) auto auto; }
+  .cat-item { grid-template-columns: 30px minmax(0, 1fr) auto auto auto; }
+  .cat-item .cat-key { grid-row: 1 / span 2; }
+  .cat-item .cat-name { grid-column: 2 / -1; }
   .cat-item .cat-usage { grid-column: 2; }
 }
+.cat-item .btn { white-space: nowrap; }
 .preview-frame {
   width: 100%;
   max-width: 360px;
@@ -715,6 +718,10 @@ main { padding: 12px; }
 .agg-table .btn.is-copied { border-color: var(--accent); color: var(--accent); }
 .toggle-grid.toggle-2 { grid-template-columns: 1fr 1fr; }
 .cols-preview { margin: 0; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 13px; white-space: pre-wrap; }
+
+/* ---------- 日報システム用 ---------- */
+.agg-sys { margin-top: 8px; }
+.cat-code { min-height: 32px; padding: 0 2px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -897,6 +904,7 @@ main { padding: 12px; }
         <p id="aggDiff" class="note"></p>
         <label class="check-label"><input type="checkbox" id="aggBreakdown"> 作業の内訳を表示</label>
         <button type="button" id="aggCopy" class="btn btn-primary btn-block">表をコピー（Excel・日報システムに貼り付け）</button>
+        <button type="button" id="sysExport" class="btn btn-block agg-sys">日報システム用のExcelを書き出す</button>
         <p id="aggStatus" class="copy-status" role="status" aria-live="polite"></p>
       </section>
 
@@ -1088,6 +1096,17 @@ main { padding: 12px; }
         <div class="field"><span class="field-label" id="aggGroupByL">まとめる単位</span><div id="aggGroupBy" class="toggle-grid toggle-2" role="group" aria-labelledby="aggGroupByL"></div></div>
         <label class="check-label"><input type="checkbox" id="aggInReport"> 日報テキストにも顧客・案件別の合計を入れる</label>
         <div class="field"><span class="field-label">表をコピーしたときの列</span><pre id="aggColsPreview" class="cols-preview"></pre></div>
+      </section>
+      <section class="card stack" aria-labelledby="tplHeading">
+        <h2 id="tplHeading" class="section-title">日報システムのひな形（Excel）</h2>
+        <p id="tplInfo" class="note"></p>
+        <label class="btn file-btn">ひな形のファイルを選ぶ
+          <input type="file" id="tplInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="visually-hidden">
+        </label>
+        <button type="button" id="tplImportCodes" class="btn">コード一覧を顧客・案件に登録</button>
+        <button type="button" id="tplRemove" class="btn btn-small">ひな形の設定を解除</button>
+        <p id="tplStatus" class="note" role="status" aria-live="polite"></p>
+        <p class="note">日報画面の「日報システム用のExcelを書き出す」で、このひな形の「work_data」シートに、顧客＋業務＋工程ごとの作業時間・移動時間・備考（メモ）を書き込みます。選択リストや式はそのまま残ります。工程区分・作業工程は「作業ボタン」の設定で作業ごとに決めます。ひな形はこの端末のブラウザに保存されます。</p>
       </section>
     </section>
 
@@ -1287,7 +1306,7 @@ function button(label, onClick, className = 'btn') {
 function defaultState() {
   return {
     version: DATA_VERSION,
-    categories: DEFAULT_CATEGORY_NAMES.map((name, i) => ({ id: `cat${i + 1}`, name, deleted: false })),
+    categories: DEFAULT_CATEGORY_NAMES.map((name, i) => ({ id: `cat${i + 1}`, name, deleted: false, kubun: '', sagyo: '', travel: false })),
     customers: [],
     projects: [],
     records: [],
@@ -1313,9 +1332,11 @@ function migrate(raw) {
   if (d.version === 2) { d.todos = []; d.settings = { ...DEFAULT_SETTINGS }; d.version = 3; }
   // 省略された項目を補う
   const str = (v) => (typeof v === 'string' ? v : '');
-  d.categories = (d.categories || []).map((c) => ({ id: c.id, name: str(c.name), deleted: !!c.deleted }));
-  d.customers = (d.customers || []).map((c) => ({ id: c.id, name: str(c.name), hidden: !!c.hidden }));
-  d.projects = (d.projects || []).map((p) => ({ id: p.id, customerId: p.customerId, name: str(p.name), hidden: !!p.hidden }));
+  const code = (v) => (typeof v === 'number' ? String(v) : str(v).trim());
+  // 工程区分・作業工程・移動時間の印と、顧客・案件のコードは日報システム用（無ければ空）
+  d.categories = (d.categories || []).map((c) => ({ id: c.id, name: str(c.name), deleted: !!c.deleted, kubun: code(c.kubun), sagyo: code(c.sagyo), travel: !!c.travel }));
+  d.customers = (d.customers || []).map((c) => ({ id: c.id, name: str(c.name), hidden: !!c.hidden, code: code(c.code) }));
+  d.projects = (d.projects || []).map((p) => ({ id: p.id, customerId: p.customerId, name: str(p.name), hidden: !!p.hidden, code: code(p.code) }));
   d.records = (d.records || []).map((r) => ({
     id: r.id,
     start: r.start,
@@ -1356,7 +1377,7 @@ function migrate(raw) {
       const a = st.agg && typeof st.agg === 'object' ? st.agg : {};
       const pick = (v, list, def) => (list.includes(v) ? v : def);
       return {
-        unit: pick(a.unit, [1, 6, 15, 30, 60], DEFAULT_AGG.unit),
+        unit: pick(a.unit, [1, 5, 10, 15, 30], DEFAULT_AGG.unit),
         rounding: pick(a.rounding, ['round', 'ceil', 'floor'], DEFAULT_AGG.rounding),
         format: pick(a.format, ['hours', 'hm', 'min'], DEFAULT_AGG.format),
         roundPer: pick(a.roundPer, ['group', 'record'], DEFAULT_AGG.roundPer),
@@ -1530,7 +1551,7 @@ function addCustomer(name) {
   if (!n) return null;
   const exist = findCustomer(n);
   if (exist) return exist;
-  const c = { id: uid(), name: n, hidden: false };
+  const c = { id: uid(), name: n, hidden: false, code: '' };
   state.customers.push(c);
   return c;
 }
@@ -1540,7 +1561,7 @@ function addProject(customerName, name) {
   const c = addCustomer(customerName);
   const exist = projectsOf(c.id).find((p) => norm(p.name) === norm(n));
   if (exist) return exist;
-  const p = { id: uid(), customerId: c.id, name: n, hidden: false };
+  const p = { id: uid(), customerId: c.id, name: n, hidden: false, code: '' };
   state.projects.push(p);
   return p;
 }
@@ -1726,18 +1747,20 @@ if (!fsSupported) fileStore.status = 'unsupported';
 
 function idbOpen() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open('sagyokanri', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('handles');
+    const r = indexedDB.open('sagyokanri', 2);
+    r.onupgradeneeded = () => {
+      for (const name of ['handles', 'files']) if (!r.result.objectStoreNames.contains(name)) r.result.createObjectStore(name);
+    };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
 }
-async function idbReq(mode, fn) {
+async function idbReq(mode, fn, store = 'handles') {
   const db = await idbOpen();
   try {
     return await new Promise((res, rej) => {
-      const t = db.transaction('handles', mode);
-      const req = fn(t.objectStore('handles'));
+      const t = db.transaction(store, mode);
+      const req = fn(t.objectStore(store));
       t.oncomplete = () => res(req.result);
       t.onerror = () => rej(t.error);
       t.onabort = () => rej(t.error);
@@ -2394,7 +2417,7 @@ function renderAll() {
     renderAlerts();
     if (currentScreen === 'todo') renderTodo();
     if (currentScreen === 'notify') renderNotifySettings();
-    if (currentScreen === 'agg') renderAggSettings();
+    if (currentScreen === 'agg') { renderAggSettings(); renderTemplateSettings(); }
     if (currentScreen === 'report') renderReport();
     if (currentScreen === 'master') renderMaster();
     if (currentScreen === 'buttons') renderSettings();
@@ -3179,6 +3202,7 @@ function masterItem({ item, label, group, arr, selectable, fkp, onEdit }) {
     li.append(el('span', 'label-text', label));
   }
   if (selectable && selectedCustomerId === item.id) li.append(el('span', 'tag', '選択中'));
+  if (item.code) li.append(el('span', 'tag', `コード ${item.code}`));
   if (item.hidden) li.append(el('span', 'tag', '非表示'));
   const up = button('↑', () => { if (moveInArray(arr, item, group, -1)) { save(); renderAll(); } }, 'btn btn-icon');
   up.setAttribute('aria-label', `${item.name}を上へ`);
@@ -3473,9 +3497,13 @@ function renderSettings() {
       save();
       scheduleRender();
     });
-    const nameBox = el('div');
+    const nameBox = el('div', 'cat-name');
     nameBox.append(name);
     const running = run && run.type === 'work' && run.categoryId === c.id;
+    const codeBtn = button(categoryCodeLabel(c), () => editCategoryCodes(c), 'link-btn cat-code');
+    codeBtn.setAttribute('aria-label', `「${c.name}」の工程区分・作業工程（${categoryCodeLabel(c)}）`);
+    codeBtn.dataset.fk = `cat-code-${c.id}`;
+    nameBox.append(codeBtn);
     if (running) nameBox.append(el('span', 'cat-running', '● 実行中のため削除できません'));
     const usage = el('span', 'cat-usage', `30日：${use.get(c.id) || 0}回`);
     const up = button('↑', () => moveCategory(c, -1), 'btn btn-icon');
@@ -3514,7 +3542,7 @@ function initSettingsScreen() {
     const n = input.value.trim();
     if (!n) return;
     if (activeCategories().some((c) => norm(c.name) === norm(n))) { await alertDialog('追加できません', `『${n}』はすでにあります。`); return; }
-    state.categories.push({ id: uid(), name: n, deleted: false });
+    state.categories.push({ id: uid(), name: n, deleted: false, kubun: '', sagyo: '', travel: n.includes('移動') });
     input.value = '';
     save();
     renderAll();
@@ -4325,8 +4353,8 @@ function initTodo() {
  * 顧客・案件別の合計（日報システムへの登録用）
  * ===================================================================== */
 const AGG_UNITS = [
-  { v: 1, label: '1分' }, { v: 6, label: '0.1h（6分）' }, { v: 15, label: '0.25h（15分）' },
-  { v: 30, label: '0.5h（30分）' }, { v: 60, label: '1h' },
+  { v: 1, label: '1分' }, { v: 5, label: '5分' }, { v: 10, label: '10分' },
+  { v: 15, label: '15分（0.25h）' }, { v: 30, label: '30分（0.5h）' },
 ];
 const AGG_ROUNDING = [{ v: 'round', label: '四捨五入' }, { v: 'ceil', label: '切り上げ' }, { v: 'floor', label: '切り捨て' }];
 const AGG_FORMATS = [{ v: 'hours', label: '2.25h' }, { v: 'hm', label: '2:15' }, { v: 'min', label: '135分' }];
@@ -4343,7 +4371,7 @@ function roundAggMinutes(min, agg = state.settings.agg) {
 function fmtAggTime(min, withUnit = true, agg = state.settings.agg) {
   if (agg.format === 'hm') return `${Math.floor(min / 60)}:${pad2(min % 60)}`;
   if (agg.format === 'min') return withUnit ? `${min}分` : String(min);
-  const dec = { 1: 2, 6: 1, 15: 2, 30: 1, 60: 0 }[agg.unit] ?? 2;
+  const dec = { 1: 2, 5: 2, 10: 2, 15: 2, 30: 1 }[agg.unit] ?? 2;
   const v = (min / 60).toFixed(dec);
   return withUnit ? `${v}h` : v;
 }
@@ -4552,6 +4580,547 @@ function initAggregate() {
   }
 }
 
+/* =====================================================================
+ * Excel（.xlsx）の読み書き（外部ライブラリなし）
+ *  xlsx は ZIP に XML を入れたもの。ZIP の展開・圧縮はブラウザの
+ *  DecompressionStream / CompressionStream（deflate-raw）を使う。
+ * ===================================================================== */
+const XL_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const REL_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+async function streamBytes(bytes, stream) {
+  const res = new Response(new Blob([bytes]).stream().pipeThrough(stream));
+  return new Uint8Array(await res.arrayBuffer());
+}
+/** ZIP を展開して [{ name, data }] を返す */
+async function unzipEntries(buf) {
+  const b = new Uint8Array(buf);
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let eocd = -1;
+  for (let i = b.length - 22; i >= Math.max(0, b.length - 65557); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('Excel ファイル（.xlsx）ではありません。');
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const out = [];
+  const dec = new TextDecoder();
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('ファイルが壊れています。');
+    const method = dv.getUint16(p + 10, true);
+    const csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true);
+    const xlen = dv.getUint16(p + 30, true);
+    const clen = dv.getUint16(p + 32, true);
+    const off = dv.getUint32(p + 42, true);
+    const name = dec.decode(b.subarray(p + 46, p + 46 + nlen));
+    const lnlen = dv.getUint16(off + 26, true);
+    const lxlen = dv.getUint16(off + 28, true);
+    const raw = b.subarray(off + 30 + lnlen + lxlen, off + 30 + lnlen + lxlen + csize);
+    let data;
+    if (method === 0) data = raw.slice();
+    else if (method === 8) data = await streamBytes(raw, new DecompressionStream('deflate-raw'));
+    else throw new Error('対応していない圧縮形式です。');
+    out.push({ name, data });
+    p += 46 + nlen + xlen + clen;
+  }
+  return out;
+}
+/** [{ name, data }] を ZIP にする */
+async function zipEntries(entries) {
+  const enc = new TextEncoder();
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  const now = new Date();
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+  const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  for (const e of entries) {
+    const name = enc.encode(e.name);
+    const crc = crc32(e.data);
+    let method = 8;
+    let comp;
+    try { comp = await streamBytes(e.data, new CompressionStream('deflate-raw')); } catch (_) { method = 0; comp = e.data; }
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, method, true);
+    lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, comp.length, true); lh.setUint32(22, e.data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, comp);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, method, true);
+    ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, comp.length, true); ch.setUint32(24, e.data.length, true); ch.setUint16(28, name.length, true);
+    ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + comp.length;
+  }
+  const csize = central.reduce((s, x) => s + x.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+  end.setUint32(12, csize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+/* ----- ブック・シートの読み取り ----- */
+const colToNum = (col) => [...col].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
+function numToCol(n) { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+const splitRef = (ref) => { const m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { col: m[1], row: Number(m[2]) } : null; };
+function parseXml(bytes) {
+  const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('ファイルの中身を読み取れません。');
+  return doc;
+}
+const xmlBytes = (doc) => new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+const kids = (node, local) => [...node.childNodes].filter((n) => n.nodeType === 1 && n.localName === local);
+
+/** xlsx を開いて、シート名・XML・共有文字列を取り出す */
+async function openWorkbook(buf) {
+  const entries = await unzipEntries(buf);
+  const map = new Map(entries.map((e) => [e.name, e]));
+  const wbEntry = map.get('xl/workbook.xml');
+  if (!wbEntry) throw new Error('Excel ファイル（.xlsx）ではありません。');
+  const wb = parseXml(wbEntry.data);
+  const rels = parseXml(map.get('xl/_rels/workbook.xml.rels').data);
+  const relTarget = new Map([...rels.getElementsByTagName('Relationship')].map((r) => {
+    const t = r.getAttribute('Target');
+    return [r.getAttribute('Id'), t.startsWith('/') ? t.slice(1) : `xl/${t.replace(/^\.\//, '')}`];
+  }));
+  const sheets = [...wb.getElementsByTagName('sheet')].map((s) => ({
+    name: s.getAttribute('name'),
+    path: relTarget.get(s.getAttributeNS(REL_NS, 'id') || s.getAttribute('r:id')),
+  }));
+  let shared = [];
+  const ss = map.get('xl/sharedStrings.xml');
+  if (ss) shared = [...parseXml(ss.data).getElementsByTagName('si')].map((si) => [...si.getElementsByTagName('t')].map((t) => t.textContent).join(''));
+  return { entries, map, wb, sheets, shared };
+}
+function cellText(c, shared) {
+  const t = c.getAttribute('t');
+  if (t === 'inlineStr') return [...c.getElementsByTagName('t')].map((x) => x.textContent).join('');
+  const v = kids(c, 'v')[0];
+  const raw = v ? v.textContent : '';
+  if (t === 's') return shared[Number(raw)] ?? '';
+  return raw;
+}
+/** シートの中身を { row: { col: 文字 } } で返す */
+function readSheetValues(doc, shared) {
+  const out = new Map();
+  for (const c of doc.getElementsByTagNameNS(XL_NS, 'c')) {
+    const r = splitRef(c.getAttribute('r') || '');
+    if (!r) continue;
+    if (!out.has(r.row)) out.set(r.row, {});
+    out.get(r.row)[r.col] = cellText(c, shared).trim();
+  }
+  return out;
+}
+function findColumns(headerRow, wanted) {
+  const cols = {};
+  for (const [key, names] of Object.entries(wanted)) {
+    const exact = Object.entries(headerRow).find(([, v]) => names.includes(v));
+    const part = Object.entries(headerRow).find(([, v]) => names.some((n) => v.startsWith(n)));
+    const hit = exact || part;
+    if (hit) cols[key] = hit[0];
+  }
+  return cols;
+}
+const WORK_COLS = {
+  custCode: ['顧客コード'], custName: ['顧客名(選択)', '顧客名'], projCode: ['業務コード'], projName: ['業務名(選択)', '業務名'],
+  kubun: ['工程区分'], sagyo: ['作業工程'], work: ['作業時間'], travel: ['移動時間'], note: ['備考'],
+};
+const CODE_COLS = { custCode: ['顧客コード'], projCode: ['業務コード'], custName: ['顧客名'], projName: ['業務名'] };
+
+/** ひな形を調べて、取り込み用シートとコード一覧を読み取る */
+async function inspectTemplate(buf) {
+  const book = await openWorkbook(buf);
+  const work = book.sheets.find((s) => s.name === 'work_data') || book.sheets[0];
+  if (!work || !book.map.has(work.path)) throw new Error('取り込み用のシート（work_data）が見つかりません。');
+  const workDoc = parseXml(book.map.get(work.path).data);
+  const wv = readSheetValues(workDoc, book.shared);
+  const cols = findColumns(wv.get(1) || {}, WORK_COLS);
+  const missing = Object.keys(WORK_COLS).filter((k) => !cols[k]);
+  if (missing.length) throw new Error(`見出しが見つかりません：${missing.map((k) => WORK_COLS[k][0]).join('、')}`);
+  const codes = [];
+  const codeSheet = book.sheets.find((s) => s.name === 'コード一覧');
+  if (codeSheet && book.map.has(codeSheet.path)) {
+    const cv = readSheetValues(parseXml(book.map.get(codeSheet.path).data), book.shared);
+    const cc = findColumns(cv.get(1) || {}, CODE_COLS);
+    if (cc.custName) {
+      for (const [r, row] of [...cv.entries()].sort((a, b) => a[0] - b[0])) {
+        if (r === 1 || !row[cc.custName]) continue;
+        codes.push({ custName: row[cc.custName], projName: cc.projName ? row[cc.projName] || '' : '', custCode: cc.custCode ? row[cc.custCode] || '' : '', projCode: cc.projCode ? row[cc.projCode] || '' : '' });
+      }
+    }
+  }
+  return { book, work, workDoc, cols, codes };
+}
+
+/* ----- セルの書き込み ----- */
+function getRowEl(doc, sheetData, r) {
+  const rows = kids(sheetData, 'row');
+  let row = rows.find((x) => Number(x.getAttribute('r')) === r);
+  if (row) return row;
+  row = doc.createElementNS(XL_NS, 'row');
+  row.setAttribute('r', String(r));
+  const after = rows.find((x) => Number(x.getAttribute('r')) > r);
+  sheetData.insertBefore(row, after || null);
+  return row;
+}
+function getCellEl(doc, rowEl, col, r) {
+  const cells = kids(rowEl, 'c');
+  let c = cells.find((x) => (splitRef(x.getAttribute('r')) || {}).col === col);
+  if (c) return c;
+  c = doc.createElementNS(XL_NS, 'c');
+  c.setAttribute('r', `${col}${r}`);
+  const after = cells.find((x) => colToNum((splitRef(x.getAttribute('r')) || { col: 'A' }).col) > colToNum(col));
+  rowEl.insertBefore(c, after || null);
+  return c;
+}
+function clearCell(c) {
+  while (c.firstChild) c.removeChild(c.firstChild);
+  c.removeAttribute('t');
+}
+function setCellValue(doc, c, value, style) {
+  clearCell(c);
+  if (style != null) c.setAttribute('s', String(style));
+  if (value === '' || value == null) return;
+  if (typeof value === 'number') {
+    c.setAttribute('t', 'n');
+    const v = doc.createElementNS(XL_NS, 'v');
+    v.textContent = String(value);
+    c.append(v);
+  } else {
+    c.setAttribute('t', 'inlineStr');
+    const is = doc.createElementNS(XL_NS, 'is');
+    const t = doc.createElementNS(XL_NS, 't');
+    t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
+    t.textContent = String(value);
+    is.append(t);
+    c.append(is);
+  }
+}
+function setCellFormula(doc, c, formula) {
+  clearCell(c);
+  const f = doc.createElementNS(XL_NS, 'f');
+  f.textContent = formula;
+  c.append(f);
+}
+/** 式の中の、その行を指す相対参照（例：B7）を別の行に置き換える */
+const shiftFormula = (f, from, to) => f.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)/g, (m, d1, col, d2, n) => (d2 === '' && Number(n) === from ? `${d1}${col}${to}` : m));
+/** 時刻（h:mm）の書式番号を探す。無ければ追加する */
+function timeStyleId(book) {
+  const entry = book.map.get('xl/styles.xml');
+  if (!entry) return null;
+  const doc = parseXml(entry.data);
+  const xfsEl = doc.getElementsByTagNameNS(XL_NS, 'cellXfs')[0];
+  if (!xfsEl) return null;
+  const custom = new Map([...doc.getElementsByTagNameNS(XL_NS, 'numFmt')].map((n) => [n.getAttribute('numFmtId'), n.getAttribute('formatCode')]));
+  const xfs = kids(xfsEl, 'xf');
+  const isTime = (id) => ['20', '46', '21'].includes(id) || /^\[?h+\]?:mm/i.test(custom.get(id) || '');
+  const idx = xfs.findIndex((x) => isTime(x.getAttribute('numFmtId')));
+  if (idx >= 0) return idx;
+  const xf = doc.createElementNS(XL_NS, 'xf');
+  for (const [k, v] of [['numFmtId', '20'], ['fontId', '0'], ['fillId', '0'], ['borderId', '0'], ['xfId', '0'], ['applyNumberFormat', '1']]) xf.setAttribute(k, v);
+  xfsEl.append(xf);
+  xfsEl.setAttribute('count', String(xfs.length + 1));
+  entry.data = xmlBytes(doc);
+  return xfs.length;
+}
+
+/**
+ * ひな形の取り込み用シートに行を書き込み、新しい xlsx（Blob）を返す。
+ * rows: [{ custCode, custName, projCode, projName, kubun, sagyo, workMin, travelMin, note }]
+ */
+async function fillTemplate(buf, rows) {
+  const t = await inspectTemplate(buf);
+  const { book, work, workDoc: doc, cols } = t;
+  const sheetData = doc.getElementsByTagNameNS(XL_NS, 'sheetData')[0];
+  const existingRows = kids(sheetData, 'row').map((x) => Number(x.getAttribute('r'))).filter((r) => r >= 2);
+  const lastRow = Math.max(1, ...existingRows);
+  const timeStyle = timeStyleId(book);
+  // 列ごとの「元の式」と「時刻の書式」
+  const formulaOf = {};
+  const styleOf = {};
+  for (const key of Object.keys(cols)) {
+    for (const r of existingRows) {
+      const c = kids(getRowEl(doc, sheetData, r), 'c').find((x) => (splitRef(x.getAttribute('r')) || {}).col === cols[key]);
+      if (!c) continue;
+      const f = kids(c, 'f')[0];
+      if (f && !formulaOf[key]) formulaOf[key] = { text: f.textContent, row: r };
+      if (c.getAttribute('s') && styleOf[key] == null) styleOf[key] = c.getAttribute('s');
+    }
+  }
+  const tStyle = (key) => styleOf[key] ?? timeStyle;
+  const num = (v) => (v !== '' && v != null && /^\d+(\.\d+)?$/.test(String(v)) ? Number(v) : v);
+  const end = Math.max(lastRow, rows.length + 1);
+  for (let r = 2; r <= end; r++) {
+    const rowEl = getRowEl(doc, sheetData, r);
+    const d = rows[r - 2];
+    for (const key of Object.keys(WORK_COLS)) {
+      const c = getCellEl(doc, rowEl, cols[key], r);
+      const timeKey = key === 'work' || key === 'travel';
+      if (d) {
+        let v = '';
+        if (key === 'custCode') v = num(d.custCode);
+        else if (key === 'custName') v = d.custName;
+        else if (key === 'projCode') v = num(d.projCode);
+        else if (key === 'projName') v = d.projName;
+        else if (key === 'kubun') v = num(d.kubun);
+        else if (key === 'sagyo') v = num(d.sagyo);
+        else if (key === 'work') v = d.workMin ? d.workMin / 1440 : '';
+        else if (key === 'travel') v = d.travelMin ? d.travelMin / 1440 : '';
+        else if (key === 'note') v = d.note;
+        // コードが分からないときは元の式を残す（Excel が名前から引く）
+        if ((key === 'custCode' || key === 'projCode') && v === '' && formulaOf[key]) setCellFormula(doc, c, shiftFormula(formulaOf[key].text, formulaOf[key].row, r));
+        else setCellValue(doc, c, v, timeKey ? tStyle(key) : c.getAttribute('s'));
+      } else if (formulaOf[key] && (key === 'custCode' || key === 'projCode')) {
+        setCellFormula(doc, c, shiftFormula(formulaOf[key].text, formulaOf[key].row, r)); // 使わない行は元の式に戻す
+      } else {
+        setCellValue(doc, c, '', timeKey ? tStyle(key) : c.getAttribute('s'));
+      }
+    }
+  }
+  const dim = doc.getElementsByTagNameNS(XL_NS, 'dimension')[0];
+  if (dim) {
+    const refEnd = splitRef((dim.getAttribute('ref') || 'A1').split(':').pop()) || { col: 'A' };
+    const lastCol = numToCol(Math.max(colToNum(refEnd.col), ...Object.values(cols).map(colToNum)));
+    dim.setAttribute('ref', `A1:${lastCol}${end}`);
+  }
+  book.map.get(work.path).data = xmlBytes(doc);
+  // 開いたときに式を計算し直す
+  const calc = book.wb.getElementsByTagNameNS(XL_NS, 'calcPr')[0];
+  if (calc) calc.setAttribute('fullCalcOnLoad', '1');
+  else { const cp = book.wb.createElementNS(XL_NS, 'calcPr'); cp.setAttribute('fullCalcOnLoad', '1'); book.wb.documentElement.append(cp); }
+  book.map.get('xl/workbook.xml').data = xmlBytes(book.wb);
+  return zipEntries(book.entries);
+}
+
+/* =====================================================================
+ * 日報システム用の Excel（会社のひな形に書き込む）
+ * ===================================================================== */
+const TEMPLATE_KEY = 'template';
+let templateInfo = null; // { name, savedAt, size, codes: [...] }（ひな形そのものは IndexedDB）
+
+const filesStore = {
+  get: () => idbReq('readonly', (s) => s.get(TEMPLATE_KEY), 'files'),
+  set: (v) => idbReq('readwrite', (s) => s.put(v, TEMPLATE_KEY), 'files'),
+  del: () => idbReq('readwrite', (s) => s.delete(TEMPLATE_KEY), 'files'),
+};
+async function loadTemplateInfo() {
+  try {
+    const t = await filesStore.get();
+    templateInfo = t ? { name: t.name, savedAt: t.savedAt, size: t.bytes.byteLength, codes: t.codes || [] } : null;
+  } catch (_) { templateInfo = null; }
+  renderAll();
+}
+async function chooseTemplate(file) {
+  let info;
+  try {
+    const buf = await file.arrayBuffer();
+    info = await inspectTemplate(buf);
+    await filesStore.set({ name: file.name, savedAt: Date.now(), bytes: buf, codes: info.codes });
+  } catch (e) {
+    await alertDialog('ひな形を読み込めません', `${file.name} をひな形として使えません。\n理由：${e.message || e.name}`);
+    return;
+  }
+  await loadTemplateInfo();
+  const n = info.codes.length;
+  const ok = n && await confirmDialog('コード一覧の登録',
+    `ひな形「${file.name}」を設定しました。\nコード一覧に ${n} 件の顧客・業務があります。顧客・案件のマスタに登録しますか？\n（すでにある名前はコードだけ更新します）`, '登録する');
+  if (ok) importTemplateCodes();
+  else flashStatus($('#tplStatus'), `✓ ひな形「${file.name}」を設定しました。`);
+}
+/** ひな形のコード一覧を顧客・案件のマスタに登録する */
+function importTemplateCodes() {
+  if (!templateInfo) return;
+  let addC = 0; let addP = 0; let upd = 0;
+  for (const c of templateInfo.codes) {
+    let cust = findCustomer(c.custName);
+    if (!cust) { cust = addCustomer(c.custName); addC++; }
+    if (c.custCode && cust.code !== c.custCode) { if (cust.code) upd++; cust.code = c.custCode; }
+    if (!c.projName) continue;
+    let proj = projectsOf(cust.id).find((p) => norm(p.name) === norm(c.projName));
+    if (!proj) { proj = addProject(cust.name, c.projName); addP++; }
+    if (c.projCode && proj.code !== c.projCode) { if (proj.code) upd++; proj.code = c.projCode; }
+  }
+  save();
+  renderAll();
+  flashStatus($('#tplStatus'), `✓ 顧客 ${addC}件・案件 ${addP}件を登録しました${upd ? `（コードの更新 ${upd}件）` : ''}。`);
+}
+
+/** その日の記録を、日報システムの行（顧客＋業務＋工程ごと）にまとめる */
+function buildSystemRows(key, codes, now = Date.now()) {
+  const agg = state.settings.agg;
+  const clean = (v) => String(v || '').replace(/\s*[\r\n]+\s*/g, ' ').trim();
+  const codeOf = (custName, projName) => {
+    const c = codes.find((x) => norm(x.custName) === norm(custName) && norm(x.projName) === norm(projName))
+      || (projName ? null : codes.find((x) => norm(x.custName) === norm(custName)));
+    const cust = findCustomer(custName);
+    const proj = cust && projName ? projectsOf(cust.id).find((p) => norm(p.name) === norm(projName)) : null;
+    return {
+      custCode: (c && c.custCode) || (codes.find((x) => norm(x.custName) === norm(custName)) || {}).custCode || (cust && cust.code) || '',
+      projCode: (c && projName && c.projCode) || (proj && proj.code) || '',
+      known: !custName || !!c || (!!cust && !!cust.code && (!projName || (!!proj && !!proj.code))),
+    };
+  };
+  const groups = new Map();
+  const travels = new Map();
+  const warn = { noCode: new Set(), unknown: new Set(), running: false };
+  const put = (map, k, init) => { if (!map.has(k)) map.set(k, init()); return map.get(k); };
+  for (const r of recordsOfDate(key)) {
+    if (r.type !== 'work') continue;
+    if (r.end == null) warn.running = true;
+    const cat = categoryById(r.categoryId);
+    const custName = clean(r.customer);
+    const projName = clean(r.project);
+    const m = recordMinutes(r, now);
+    const memo = clean(r.memo);
+    if (custName && !codeOf(custName, projName).known && codes.length) warn.unknown.add(projName ? `${custName}／${projName}` : custName);
+    if (cat && cat.travel) {
+      const t = put(travels, `${norm(custName)}|${norm(projName)}`, () => ({ custName, projName, cat, minutes: 0, roundedSum: 0, memos: [] }));
+      t.minutes += m; t.roundedSum += roundAggMinutes(m); if (memo && !t.memos.includes(memo)) t.memos.push(memo);
+      continue;
+    }
+    if (!cat || cat.kubun === '' || cat.sagyo === '') warn.noCode.add(cat ? cat.name : '（不明な作業）');
+    const k = `${norm(custName)}|${norm(projName)}|${cat ? cat.kubun : ''}|${cat ? cat.sagyo : ''}`;
+    const g = put(groups, k, () => ({ custName, projName, kubun: cat ? cat.kubun : '', sagyo: cat ? cat.sagyo : '', minutes: 0, roundedSum: 0, memos: [], travelMin: 0 }));
+    g.minutes += m; g.roundedSum += roundAggMinutes(m); if (memo && !g.memos.includes(memo)) g.memos.push(memo);
+  }
+  const fin = (x) => (agg.roundPer === 'record' ? x.roundedSum : roundAggMinutes(x.minutes));
+  const rows = [...groups.values()].map((g) => ({ ...g, workMin: fin(g) }));
+  // 移動時間は、同じ顧客・業務の行（作業時間が一番長い行）に入れる。無ければ移動だけの行を作る
+  for (const t of travels.values()) {
+    const same = rows.filter((x) => norm(x.custName) === norm(t.custName) && norm(x.projName) === norm(t.projName)).sort((a, b) => b.workMin - a.workMin)[0];
+    if (same) { same.travelMin += fin(t); for (const m of t.memos) if (!same.memos.includes(m)) same.memos.push(m); }
+    else {
+      if (t.cat.kubun === '' || t.cat.sagyo === '') warn.noCode.add(t.cat.name);
+      rows.push({ custName: t.custName, projName: t.projName, kubun: t.cat.kubun, sagyo: t.cat.sagyo, minutes: 0, workMin: 0, travelMin: fin(t), memos: t.memos });
+    }
+  }
+  const out = rows.map((x) => ({ ...codeOf(x.custName, x.projName), custName: x.custName, projName: x.projName, kubun: x.kubun, sagyo: x.sagyo, workMin: x.workMin, travelMin: x.travelMin, note: x.memos.join('、') }));
+  const n = (v) => (v === '' ? Infinity : Number(v) || Infinity);
+  out.sort((a, b) => (a.custName ? 0 : 1) - (b.custName ? 0 : 1) || n(a.custCode) - n(b.custCode) || a.custName.localeCompare(b.custName, 'ja')
+    || n(a.projCode) - n(b.projCode) || n(a.kubun) - n(b.kubun) || n(a.sagyo) - n(b.sagyo));
+  return { rows: out.filter((x) => x.workMin || x.travelMin), warn };
+}
+async function exportSystemExcel() {
+  let tpl = null;
+  try { tpl = await filesStore.get(); } catch (_) { tpl = null; }
+  if (!tpl) {
+    const go = await confirmDialog('ひな形が未設定です', '日報システムのひな形（Excel）を先に設定してください。\n「⚙ 設定」→「集計のしかた」で選べます。', '設定を開く');
+    if (go) showScreen('agg');
+    return;
+  }
+  const { rows, warn } = buildSystemRows(reportDate, tpl.codes || []);
+  if (!rows.length) { await alertDialog('書き出せません', 'この日の作業の記録がありません。'); return; }
+  const notes = [];
+  if (warn.noCode.size) notes.push(`・工程区分・作業工程が未設定の作業：${[...warn.noCode].join('、')}（作業ボタン設定で設定できます）`);
+  if (warn.unknown.size) notes.push(`・コード一覧にない顧客・業務：${[...warn.unknown].join('、')}（コードは空欄、または Excel の式で引きます）`);
+  if (warn.running) notes.push('・計測中の記録があります（現在時刻までの時間で書き出します）');
+  if (notes.length) {
+    const ok = await confirmDialog('確認してください', `${notes.join('\n')}\n\nこのまま書き出しますか？`, 'このまま書き出す');
+    if (!ok) return;
+  }
+  try {
+    const blob = await fillTemplate(tpl.bytes, rows);
+    const name = `work_data${compactKey(reportDate)}.xlsx`;
+    const a = el('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    flashStatus($('#aggStatus'), `✓ 日報システム用の Excel（${name}、${rows.length}行）を書き出しました。`);
+  } catch (e) {
+    await alertDialog('書き出せません', `Excel ファイルを作れませんでした。\n理由：${e.message || e.name}`);
+  }
+}
+
+/* ----- 作業ボタンの工程区分・作業工程 ----- */
+async function editCategoryCodes(c) {
+  const wrap = el('div', 'stack');
+  const mk = (id, label, value) => {
+    const box = el('div', 'field');
+    const lab = el('label', null, label);
+    lab.htmlFor = id;
+    const i = el('input');
+    i.type = 'text';
+    i.inputMode = 'numeric';
+    i.id = id;
+    i.value = value;
+    i.autocomplete = 'off';
+    box.append(lab, i);
+    wrap.append(box);
+    return i;
+  };
+  const k = mk('codeKubun', '工程区分', c.kubun);
+  const sgy = mk('codeSagyo', '作業工程', c.sagyo);
+  const lab = el('label', 'check-label');
+  const chk = el('input');
+  chk.type = 'checkbox';
+  chk.checked = !!c.travel;
+  lab.append(chk, document.createTextNode(' 移動時間として書き出す'));
+  wrap.append(lab, el('p', 'note', '移動時間にすると、記録に入れた顧客・業務の行の「移動時間」に入れます。'));
+  const ok = await openDialog({
+    title: `「${c.name}」の工程`, content: wrap, cancelValue: false,
+    buttons: [{ label: 'キャンセル', value: false }, {
+      label: '保存', value: true, primary: true,
+      validate: () => ([k.value, sgy.value].some((v) => v.trim() && !/^\d+$/.test(v.trim())) ? '番号は数字で入力してください。' : null),
+    }],
+  });
+  if (!ok) return;
+  c.kubun = k.value.trim();
+  c.sagyo = sgy.value.trim();
+  c.travel = chk.checked;
+  save();
+  renderAll();
+}
+function categoryCodeLabel(c) {
+  const code = c.kubun !== '' || c.sagyo !== '' ? `${c.kubun || '?'}-${c.sagyo || '?'}` : '未設定';
+  return `工程 ${code}${c.travel ? '・移動時間' : ''}`;
+}
+
+function renderTemplateSettings() {
+  const info = $('#tplInfo');
+  if (templateInfo) {
+    info.textContent = `設定中：${templateInfo.name}（${fmtSavedAt(templateInfo.savedAt)} 設定、コード一覧 ${templateInfo.codes.length}件）`;
+  } else {
+    info.textContent = 'まだ設定していません。会社の日報システムのひな形（.xlsx）を選んでください。';
+  }
+  $('#tplImportCodes').disabled = !templateInfo || !templateInfo.codes.length;
+  $('#tplRemove').disabled = !templateInfo;
+}
+function initSystemExport() {
+  $('#sysExport').addEventListener('click', exportSystemExcel);
+  $('#tplInput').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (f) await chooseTemplate(f);
+  });
+  $('#tplImportCodes').addEventListener('click', importTemplateCodes);
+  $('#tplRemove').addEventListener('click', async () => {
+    const ok = await confirmDialog('ひな形の解除', `ひな形「${templateInfo.name}」の設定を解除しますか？\n（顧客・案件のマスタは残ります）`, '解除する');
+    if (!ok) return;
+    try { await filesStore.del(); } catch (_) { /* 無視 */ }
+    await loadTemplateInfo();
+  });
+  loadTemplateInfo();
+}
+
 function init() {
   initRecordScreen();
   initReportScreen();
@@ -4559,6 +5128,7 @@ function init() {
   initSettingsScreen();
   initTodo();
   initAggregate();
+  initSystemExport();
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => showScreen(t.dataset.screen)));
   document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
     showScreen(b.dataset.go);
